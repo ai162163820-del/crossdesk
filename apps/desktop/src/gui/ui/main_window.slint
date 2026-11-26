@@ -135,13 +135,13 @@ export global UiStrings {
     in-out property <string> wayland-recommendation-title;
     in-out property <string> wayland-recommendation-message;
     in-out property <string> wayland-notice-acknowledge: "Got it";
-    in-out property <string> service-setup-title: "Install CrossDesk Service";
+    in-out property <string> service-setup-title: "Install 六季远程 Service";
     in-out property <string> service-setup-message: "Administrator permission is required to control this device while it is locked.";
     in-out property <string> service-settings-label: "Lock-screen control service";
     in-out property <string> install-service: "Install";
     in-out property <string> service-installed: "Installed";
     in-out property <string> repair-service: "Repair";
-    in-out property <string> service-repair-title: "Repair CrossDesk Service";
+    in-out property <string> service-repair-title: "Repair 六季远程 Service";
     in-out property <string> service-repair-message;
     in-out property <string> do-not-remind: "Do not remind again";
     in-out property <string> notification: "Notification";
@@ -367,7 +367,7 @@ component PasswordInput inherits FlatSurface {
 
 export component MainWindow inherits Window {
     title: root.window-title;
-    out property <string> window-title: root.gallery-mode ? "CrossDesk " + GalleryStrings.texts[54] : "CrossDesk";
+    out property <string> window-title: root.gallery-mode ? "六季远程 " + GalleryStrings.texts[54] : "六季远程";
     icon: @image-url("../../../resources/linux/crossdesk_256x256.png");
     preferred-width: root.minimum-window-width;
     preferred-height: root.minimum-window-height;
@@ -3345,7 +3345,7 @@ export component MainWindow inherits Window {
             width: min(480px, parent.width - 40px);
             height: min(416px, parent.height - 32px);
             title: UiStrings.release-notes;
-            header-status: "CrossDesk " + root.current-version;
+            header-status: "六季远程 " + root.current-version;
             close-label: MessageStrings.close;
             close => { root.dismiss-release-welcome(); }
             VerticalLayout {
@@ -3472,7 +3472,7 @@ export component MainWindow inherits Window {
                                 image-fit: contain;
                             }
                             Text {
-                                text: "CrossDesk"; font-size: 16px; font-weight: 600;
+                                text: "六季远程"; font-size: 16px; font-weight: 600;
                                 color: WorkbenchStyle.text; vertical-alignment: center;
                             }
                             Text {
@@ -3636,7 +3636,7 @@ export component MainWindow inherits Window {
                             accessible-label: update-website-label.text;
                             accessible-action-default => { root.open-website(); }
                             update-website-label := Text {
-                                text: UiStrings.access-website + "https://crossdesk.cn";
+                                text: UiStrings.access-website + "https://desk.6glive.com";
                                 color: website-touch.has-hover ? #254cc0 : WorkbenchStyle.accent;
                                 font-size: 13px;
                                 vertical-alignment: center;

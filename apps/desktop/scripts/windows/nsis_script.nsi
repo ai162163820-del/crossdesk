@@ -2,7 +2,7 @@
 !addincludedir "${__FILEDIR__}"
 
 ; Installer initial constants
-!define PRODUCT_NAME "CrossDesk"
+!define PRODUCT_NAME "6glive desk"
 !define PRODUCT_VERSION "${VERSION}"
 !define PRODUCT_VERSION_NUMERIC "${VERSION_NUMERIC}"
 !define PRODUCT_PUBLISHER "CrossDesk"
@@ -40,6 +40,9 @@ RequestExecutionLevel admin
 ; Include LogicLib for process handling
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
+; Local builds: nsProcess.dll ships inside apps/desktop/scripts/windows, so no
+; copy into the NSIS Program Files directory is required.
+!addplugindir /x86-unicode "${__FILEDIR__}"
 Var UpdateMode
 
 Function .onInit
@@ -53,7 +56,7 @@ Function .onInit
 FunctionEnd
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "crossdesk-win-x64-${PRODUCT_VERSION}.exe"
+OutFile "6glive-desk-win-x64-v${PRODUCT_VERSION}.exe"
 VIProductVersion "${PRODUCT_VERSION_NUMERIC}"
 VIAddVersionKey /LANG=2052 "CompanyName" "CrossDesk"
 VIAddVersionKey /LANG=2052 "FileDescription" "CrossDesk Installer"
@@ -73,7 +76,7 @@ Section "MainSection"
         Goto installApp
     ${EndIf}
     ; Check if CrossDesk is running
-    StrCpy $1 "CrossDesk.exe"
+    StrCpy $1 "6glive-desk.exe"
     
     nsProcess::_FindProcess "$1"
     Pop $R0
@@ -102,7 +105,7 @@ installApp:
     SetOverwrite on
 
     ; Main application executable path
-    File /oname=CrossDesk.exe "..\..\..\..\build\windows\x64\release\crossdesk.exe"
+    File /oname=6glive-desk.exe "..\..\..\..\build\windows\x64\release\crossdesk.exe"
     File "..\..\..\..\build\windows\x64\release\crossdesk_updater.exe"
     ; Bundle service-side binaries required by the Windows service flow
     File "..\..\..\..\build\windows\x64\release\crossdesk_service.exe"
@@ -123,7 +126,7 @@ installApp:
     ; Import the previous user's startup preference after installing service
     ; binaries. The migration CLI also runs during a silent updater install.
     ClearErrors
-    ExecWait '"$INSTDIR\CrossDesk.exe" --autostart-migrate' $0
+    ExecWait '"$INSTDIR\6glive-desk.exe" --autostart-migrate' $0
     ${If} ${Errors}
     ${OrIf} $0 != 0
         DetailPrint "CrossDesk will retry auto-start migration on the next launch."
@@ -140,7 +143,7 @@ installApp:
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "DisplayIcon" "$INSTDIR\CrossDesk.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "DisplayIcon" "$INSTDIR\6glive-desk.exe"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_REG_KEY}" "NoRepair" 1
     WriteRegStr HKCU "Software\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
@@ -148,15 +151,15 @@ SectionEnd
 
 Section -AdditionalIcons
     ; Desktop shortcut
-    CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\CrossDesk.exe" "" "$INSTDIR\CrossDesk.exe"
+    CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\6glive-desk.exe" "" "$INSTDIR\6glive-desk.exe"
 
     ; Start menu shortcut
-    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "$INSTDIR\CrossDesk.exe" "" "$INSTDIR\CrossDesk.exe"
+    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "$INSTDIR\6glive-desk.exe" "" "$INSTDIR\6glive-desk.exe"
 SectionEnd
 
 Section "Uninstall"
     ; Check if CrossDesk is running
-    StrCpy $1 "CrossDesk.exe"
+    StrCpy $1 "6glive-desk.exe"
     
     nsProcess::_FindProcess "$1"
     Pop $R0
@@ -179,7 +182,7 @@ cancelUninstall:
 
 uninstallApp:
     ClearErrors
-    ExecWait '"$INSTDIR\CrossDesk.exe" --autostart-uninstall' $0
+    ExecWait '"$INSTDIR\6glive-desk.exe" --autostart-uninstall' $0
     ${If} ${Errors}
     ${OrIf} $0 != 0
         MessageBox MB_ICONEXCLAMATION|MB_OK "Could not remove CrossDesk auto-start. Remove any remaining CrossDesk Autostart tasks in Task Scheduler."
@@ -188,7 +191,7 @@ uninstallApp:
     Call un.RemoveUsbmmiddDriver
 
     ; Delete main executable and uninstaller
-    Delete "$INSTDIR\CrossDesk.exe"
+    Delete "$INSTDIR\6glive-desk.exe"
     Delete "$INSTDIR\crossdesk_updater.exe"
     Delete "$INSTDIR\crossdesk_service.exe"
     Delete "$INSTDIR\crossdesk_session_helper.exe"
@@ -222,7 +225,7 @@ Function LaunchApp
     ${If} $UpdateMode = 1
         Return
     ${EndIf}
-    Exec "$INSTDIR\CrossDesk.exe"
+    Exec "$INSTDIR\6glive-desk.exe"
 FunctionEnd
 
 Function .onInstFailed
@@ -230,11 +233,11 @@ Function .onInstFailed
 FunctionEnd
 
 Function StopInstalledService
-    IfFileExists "$INSTDIR\CrossDesk.exe" 0 stop_with_sc
+    IfFileExists "$INSTDIR\6glive-desk.exe" 0 stop_with_sc
     IfFileExists "$INSTDIR\crossdesk_service.exe" 0 stop_with_sc
 
     DetailPrint "Stopping existing CrossDesk service"
-    ExecWait '"$INSTDIR\CrossDesk.exe" --service-stop' $0
+    ExecWait '"$INSTDIR\6glive-desk.exe" --service-stop' $0
     ${If} $0 = 0
         Return
     ${EndIf}
@@ -252,12 +255,12 @@ stop_with_sc:
 FunctionEnd
 
 Function RegisterInstalledService
-    IfFileExists "$INSTDIR\CrossDesk.exe" 0 missing_service_binary
+    IfFileExists "$INSTDIR\6glive-desk.exe" 0 missing_service_binary
     IfFileExists "$INSTDIR\crossdesk_service.exe" 0 missing_service_binary
     IfFileExists "$INSTDIR\crossdesk_session_helper.exe" 0 missing_service_binary
 
     DetailPrint "Registering CrossDesk service"
-    ExecWait '"$INSTDIR\CrossDesk.exe" --service-install' $0
+    ExecWait '"$INSTDIR\6glive-desk.exe" --service-install' $0
     ${If} $0 != 0
         MessageBox MB_ICONSTOP|MB_OK "Failed to register the CrossDesk service. The installation will be aborted."
         Abort
@@ -269,9 +272,9 @@ Function RegisterInstalledService
     ReadRegDWORD $1 HKLM "Software\CrossDesk\Unattended" "Enabled"
     SetRegView 32
     ${If} $1 = 1
-        ExecWait '"$INSTDIR\CrossDesk.exe" --service-start' $0
+        ExecWait '"$INSTDIR\6glive-desk.exe" --service-start' $0
         ${If} $0 != 0
-            MessageBox MB_ICONEXCLAMATION|MB_OK "Could not restart the unattended host. Run CrossDesk.exe --service-start from an administrator terminal."
+            MessageBox MB_ICONEXCLAMATION|MB_OK "Could not restart the unattended host. Run 6glive-desk.exe --service-start from an administrator terminal."
         ${EndIf}
     ${EndIf}
     DetailPrint "CrossDesk service registered"
@@ -288,13 +291,13 @@ Function un.UnregisterInstalledService
     SetRegView 64
     DeleteRegKey HKLM "Software\CrossDesk\Unattended"
     SetRegView 32
-    IfFileExists "$INSTDIR\CrossDesk.exe" 0 unregister_with_sc
+    IfFileExists "$INSTDIR\6glive-desk.exe" 0 unregister_with_sc
 
     DetailPrint "Stopping CrossDesk service"
-    ExecWait '"$INSTDIR\CrossDesk.exe" --service-stop' $0
+    ExecWait '"$INSTDIR\6glive-desk.exe" --service-stop' $0
     ${If} $0 = 0
         DetailPrint "Removing CrossDesk service"
-        ExecWait '"$INSTDIR\CrossDesk.exe" --service-uninstall' $0
+        ExecWait '"$INSTDIR\6glive-desk.exe" --service-uninstall' $0
         ${If} $0 = 0
             Return
         ${EndIf}

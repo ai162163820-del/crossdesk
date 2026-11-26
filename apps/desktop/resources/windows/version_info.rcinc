@@ -9,11 +9,11 @@
 #endif
 
 #ifndef CROSSDESK_FILE_DESCRIPTION
-#define CROSSDESK_FILE_DESCRIPTION "CrossDesk"
+#define CROSSDESK_FILE_DESCRIPTION "6glive desk"
 #endif
 
 #ifndef CROSSDESK_ORIGINAL_FILENAME
-#define CROSSDESK_ORIGINAL_FILENAME "CrossDesk.exe"
+#define CROSSDESK_ORIGINAL_FILENAME "6glive-desk.exe"
 #endif
 
 #ifndef CROSSDESK_FILE_TYPE
@@ -37,13 +37,13 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName", "CrossDesk\0"
+            VALUE "CompanyName", "6glive\0"
             VALUE "FileDescription", CROSSDESK_FILE_DESCRIPTION "\0"
             VALUE "FileVersion", CROSSDESK_VERSION_STRING "\0"
             VALUE "InternalName", CROSSDESK_ORIGINAL_FILENAME "\0"
-            VALUE "LegalCopyright", "Copyright (C) CrossDesk contributors\0"
+            VALUE "LegalCopyright", "Copyright (C) 6glive desk contributors\0"
             VALUE "OriginalFilename", CROSSDESK_ORIGINAL_FILENAME "\0"
-            VALUE "ProductName", "CrossDesk\0"
+            VALUE "ProductName", "6glive desk\0"
             VALUE "ProductVersion", CROSSDESK_VERSION_STRING "\0"
         END
     END

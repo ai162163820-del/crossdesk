@@ -820,6 +820,7 @@ function setup_targets()
 
     target("crossdesk")
         set_kind("binary")
+        set_basename("6glive-desk")
         add_deps("rd_log", "desktop_common", "gui", "single_instance")
         if not is_config("CROSSDESK_PORTABLE", true) then
             add_deps("crossdesk_updater", {inherit = false})

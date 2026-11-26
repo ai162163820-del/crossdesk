@@ -107,7 +107,7 @@ void ConfigureLinuxCaCerts(httplib::Client* cli) {
 }  // namespace
 
 std::optional<VersionInfo> CheckUpdate() {
-  httplib::Client cli("https://version.crossdesk.cn");
+  httplib::Client cli("https://desk.6glive.com");
 
   cli.set_connection_timeout(5);
   cli.set_read_timeout(5);
@@ -119,7 +119,7 @@ std::optional<VersionInfo> CheckUpdate() {
   ConfigureLinuxCaCerts(&cli);
 #endif
 
-  auto res = cli.Get("/version.json");
+  auto res = cli.Get("/updates/version.json");
   if (res) {
     if (res->status == 200) {
       try {

@@ -22,7 +22,7 @@
 namespace crossdesk::updater {
 namespace {
 constexpr std::uint64_t kMaxPackageSize = 2ULL * 1024 * 1024 * 1024;
-constexpr const char* kDownloadOrigin = "https://downloads.crossdesk.cn";
+constexpr const char* kDownloadOrigin = "https://desk.6glive.com/updates";
 
 std::string Hex(const unsigned char* data, std::size_t length) {
   constexpr char digits[] = "0123456789abcdef";
@@ -50,7 +50,7 @@ std::vector<unsigned char> Unhex(const std::string& value, std::size_t size) {
 std::string ExpectedFilename(const std::string& platform, const std::string& version) {
   if (version.empty() || version.find_first_not_of("0123456789.-") != std::string::npos)
     throw std::runtime_error("Invalid release filename version");
-  if (platform == "windows-x64") return "crossdesk-win-x64-v" + version + ".exe";
+  if (platform == "windows-x64") return "6glive-desk-win-x64-v" + version + ".exe";
   if (platform == "windows-x64-portable")
     return "crossdesk-win-x64-portable-v" + version + ".zip";
   if (platform == "macos-x64" || platform == "macos-arm64")
