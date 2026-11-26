@@ -3390,11 +3390,6 @@ export component MainWindow inherits Window {
                     active: root.window-active;
                     open-link(url) => { root.open-about-link(url); }
                 }
-                SponsorshipSection {
-                    open-afdian => { root.open-afdian-sponsor(); }
-                    open-kofi => { root.open-kofi-sponsor(); }
-                    open-github => { root.open-github-sponsor(); }
-                }
                 HorizontalLayout {
                     alignment: end;
                     SettingsButton {
@@ -3524,11 +3519,6 @@ export component MainWindow inherits Window {
                     if SponsorDirectory.special.length > 0: SpecialSponsorStrip {
                         active: root.window-active;
                         open-link(url) => { root.open-about-link(url); }
-                    }
-                    SponsorshipSection {
-                        open-afdian => { root.open-afdian-sponsor(); }
-                        open-kofi => { root.open-kofi-sponsor(); }
-                        open-github => { root.open-github-sponsor(); }
                     }
                     VerticalLayout {
                         spacing: 5px;
@@ -3696,12 +3686,6 @@ export component MainWindow inherits Window {
                             }
                         }
                     }
-                }
-
-                SponsorshipSection {
-                    open-afdian => { root.open-afdian-sponsor(); }
-                    open-kofi => { root.open-kofi-sponsor(); }
-                    open-github => { root.open-github-sponsor(); }
                 }
 
                 VerticalLayout {
