@@ -5,7 +5,7 @@ android {
     compileSdk = 36
     ndkVersion = '28.2.13676358'
     defaultConfig {
-        applicationId = 'com.6glive.desk'
+        applicationId = 'com.sixglive.desk'
         minSdk = 26
         targetSdk = 36
         versionCode = providers.gradleProperty('crossdeskVersionCode').get().toInteger()
