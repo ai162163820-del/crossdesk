@@ -9,10 +9,21 @@ import subprocess
 import zipfile
 
 
+def expected_package_name():
+    """读取 app/build.gradle 的 applicationId，避免品牌换包名后校验写死。"""
+    gradle = Path(__file__).resolve().parents[1] / "app" / "build.gradle"
+    try:
+        text = gradle.read_text(encoding="utf-8")
+    except OSError:
+        return "cn.crossdesk.mobile"
+    match = re.search(r"applicationId\s*=\s*['\"]([^'\"]+)['\"]", text)
+    return match.group(1) if match else "cn.crossdesk.mobile"
+
+
 def verify_package_version(badging, version_name, version_code):
     package = next((line for line in badging.splitlines() if line.startswith('package: ')), '')
     attributes = dict(re.findall(r"(\w+)='([^']*)'", package))
-    expected = {'name': 'cn.crossdesk.mobile', 'versionName': version_name, 'versionCode': str(version_code)}
+    expected = {'name': expected_package_name(), 'versionName': version_name, 'versionCode': str(version_code)}
     for key, value in expected.items():
         if attributes.get(key) != value:
             raise ValueError(f'Unexpected APK {key}: expected {value!r}, got {attributes.get(key)!r}')
