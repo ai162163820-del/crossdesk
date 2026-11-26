@@ -632,8 +632,8 @@ function setup_targets()
 
     target("version_checker")
         set_kind("object")
-        add_packages("cpp-httplib")
         add_packages("nlohmann_json", {public = true})
+        add_packages("cpp-httplib")
         add_deps("rd_log", "crossdesk_wire", "updater_core")
         if is_config("CROSSDESK_PORTABLE", true) then
             add_defines("CROSSDESK_PORTABLE=1")

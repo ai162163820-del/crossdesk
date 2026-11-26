@@ -74,6 +74,8 @@ private:
   void HandlePasswordChangeResult();
   // 临时密码：登录成功后向服务端登记一次性密码，并在界面上显示倒计时。
   void RequestTempPassword();
+  // 账号设备列表：登录门户并拉取同账号设备。
+  void RequestAccountDevices(const std::string& email, const std::string& password);
   void HandleTempPasswordState();
   void HandleCredentialRecovery();
   void SyncMainWindow();

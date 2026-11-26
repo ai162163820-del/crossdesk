@@ -22,6 +22,8 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <thread>
+#include "account_devices.h"
 #include <optional>
 #include <random>
 #include <set>
@@ -1907,6 +1909,16 @@ void GuiApplication::BindMainCallbacks(bool gallery_window) {
     else MinimizeMainWindowToTray();
     main->hide();
   });
+  main->on_account_login([this](slint::SharedString email,
+                                slint::SharedString password) {
+    RequestAccountDevices(std::string(email), std::string(password));
+  });
+  main->on_account_device_selected([this](slint::SharedString value) {
+    const std::string text(value);
+    const auto space = text.find(' ');
+    ui_->main->set_remote_id_input(
+        UiText(space == std::string::npos ? text : text.substr(0, space)));
+  });
   main->on_copy_local_id([this] {
     if (!SDL_SetClipboardText(client_id_)) {
       LOG_WARN("Copy local id failed: {}", SDL_GetError());
@@ -3282,6 +3294,33 @@ void GuiApplication::HandleTempPasswordState() {
     }
   }
   ui_->main->set_temp_password_info(UiText(info));
+}
+
+void GuiApplication::RequestAccountDevices(const std::string& email,
+                                           const std::string& password) {
+  if (!ui_) return;
+  ui_->main->set_account_status(UiText("正在登录…"));
+  std::thread([this, email, password]() {
+    const auto result = crossdesk::account::FetchDevices(email, password);
+    std::vector<slint::SharedString> devices;
+    std::string status;
+    if (!result.ok) {
+      status = result.error;
+    } else {
+      for (const auto& device : result.devices) {
+        std::string line = device.id;
+        if (!device.name.empty()) line += "  " + device.name;
+        devices.push_back(slint::SharedString(line));
+      }
+      status = devices.empty() ? "该账号还没有绑定设备" : "点击设备即可填入 ID";
+    }
+    slint::invoke_from_event_loop([this, status, devices]() {
+      if (!ui_) return;
+      ui_->main->set_account_devices(
+          std::make_shared<slint::VectorModel<slint::SharedString>>(devices));
+      ui_->main->set_account_status(UiText(status));
+    });
+  }).detach();
 }
 
 void GuiApplication::HandlePasswordChangeResult() {
