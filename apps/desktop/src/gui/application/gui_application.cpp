@@ -2750,6 +2750,17 @@ void GuiApplication::Tick() {
   PollUpdateCheck();
   HandleSessionCleanup();
   HandlePasswordChangeResult();
+  HandleTempPasswordState();
+  if (signal_connected_.load()) {
+    bool need_temp_password = false;
+    {
+      std::lock_guard<std::mutex> lock(password_change_mutex_);
+      const auto now = static_cast<int64_t>(std::time(nullptr));
+      need_temp_password =
+          temp_password_expires_at_ <= now && !temp_password_request_pending_;
+    }
+    if (need_temp_password) RequestTempPassword();
+  }
   HandleCredentialRecovery();
   if (!peer_) {
     signal_connection_indicator_.Reset();
@@ -3221,6 +3232,56 @@ bool GuiApplication::RequestPasswordChange(const std::string &password) {
     notify("console_password_submitted");
   }
   return true;
+}
+
+void GuiApplication::RequestTempPassword() {
+  if (!peer_ || std::string(client_id_).empty()) return;
+  {
+    std::lock_guard<std::mutex> lock(password_change_mutex_);
+    if (temp_password_request_pending_) return;
+  }
+  const auto generated = GenerateRandomPassword(temp_password_);
+  if (!generated) return;
+  const auto request_id = "temp-" + std::to_string(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now().time_since_epoch()).count());
+  {
+    std::lock_guard<std::mutex> lock(password_change_mutex_);
+    temp_password_ = *generated;
+    temp_password_expires_at_ = 0;
+    temp_password_request_pending_ = true;
+    temp_password_request_id_ = request_id;
+  }
+  nlohmann::json request = {{"type", "set_temp_password"},
+                            {"request_id", request_id},
+                            {"password", *generated},
+                            {"ttl_seconds", 1800}};
+  const std::string message = request.dump();
+  if (PeerSendSignalMessage(peer_, message.data(), message.size()) != 0) {
+    std::lock_guard<std::mutex> lock(password_change_mutex_);
+    temp_password_request_pending_ = false;
+    temp_password_expires_at_ = 0;
+    LOG_WARN("Failed to request temporary password");
+  }
+}
+
+void GuiApplication::HandleTempPasswordState() {
+  if (!ui_) return;
+  std::string info;
+  {
+    std::lock_guard<std::mutex> lock(password_change_mutex_);
+    const auto now = static_cast<int64_t>(std::time(nullptr));
+    if (!temp_password_.empty() && temp_password_expires_at_ > now) {
+      const auto remaining = temp_password_expires_at_ - now;
+      char buffer[96];
+      std::snprintf(buffer, sizeof(buffer), "临时密码 %s · 剩 %02lld:%02lld",
+                    temp_password_.c_str(),
+                    static_cast<long long>(remaining / 60),
+                    static_cast<long long>(remaining % 60));
+      info = buffer;
+    }
+  }
+  ui_->main->set_temp_password_info(UiText(info));
 }
 
 void GuiApplication::HandlePasswordChangeResult() {

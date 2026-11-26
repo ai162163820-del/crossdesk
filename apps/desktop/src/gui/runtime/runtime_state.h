@@ -179,6 +179,11 @@ struct PasswordChangeState {
   std::mutex password_change_mutex_;
   uint64_t next_password_change_request_id_ = 0;
   bool password_change_pending_ = false;
+  // 临时密码（一次性）：本机生成后交由服务端保存并校验。
+  std::string temp_password_;
+  int64_t temp_password_expires_at_ = 0;
+  bool temp_password_request_pending_ = false;
+  std::string temp_password_request_id_;
   bool password_change_result_ready_ = false;
   bool password_change_succeeded_ = false;
   bool password_change_result_uncertain_ = false;

@@ -494,6 +494,7 @@ export component MainWindow inherits Window {
     }
     in property <string> local-id: "";
     in property <string> local-password: "";
+    in-out property <string> temp-password-info: "";
     in property <bool> ip-direct-enabled: true;
     changed ip-direct-enabled => {
         if !root.ip-direct-enabled {
@@ -1692,7 +1693,7 @@ export component MainWindow inherits Window {
                         }
                     }
                 }
-                Text { x: 16px; y: 138px; height: 18px; text: UiStrings.password; font-size: 12px; color: WorkbenchStyle.muted; }
+                Text { x: 16px; y: 138px; width: parent.width - 32px; height: 18px; overflow: elide; text: root.temp-password-info == "" ? UiStrings.password : root.temp-password-info; font-size: 12px; color: WorkbenchStyle.muted; }
                 FlatSurface {
                     x: 16px; y: 158px; width: parent.width - 32px; height: 36px;
                     background: ControlStyle.input-surface; border-radius: UiRadius.control;

@@ -72,6 +72,9 @@ private:
   void ShareLocalCursorState();
   bool RequestPasswordChange(const std::string &password);
   void HandlePasswordChangeResult();
+  // 临时密码：登录成功后向服务端登记一次性密码，并在界面上显示倒计时。
+  void RequestTempPassword();
+  void HandleTempPasswordState();
   void HandleCredentialRecovery();
   void SyncMainWindow();
   void ShowGalleryWindow();

@@ -65,7 +65,7 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "Copyright (C) CrossDesk contributor
 VIAddVersionKey /LANG=2052 "OriginalFilename" "crossdesk-win-x64-${PRODUCT_VERSION}.exe"
 VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=2052 "ProductVersion" "${PRODUCT_VERSION}"
-InstallDir "$PROGRAMFILES\CrossDesk"
+InstallDir "$PROGRAMFILES64\6glive desk"
 InstallDirRegKey HKCU "Software\${PRODUCT_NAME}" "InstallDir"
 ShowInstDetails show
 
@@ -105,7 +105,7 @@ installApp:
     SetOverwrite on
 
     ; Main application executable path
-    File /oname=6glive-desk.exe "..\..\..\..\build\windows\x64\release\crossdesk.exe"
+    File /oname=6glive-desk.exe "..\..\..\..\build\windows\x64\release\6glive-desk.exe"
     File "..\..\..\..\build\windows\x64\release\crossdesk_updater.exe"
     ; Bundle service-side binaries required by the Windows service flow
     File "..\..\..\..\build\windows\x64\release\crossdesk_service.exe"

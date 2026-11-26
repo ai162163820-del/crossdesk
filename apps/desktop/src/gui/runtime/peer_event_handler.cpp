@@ -178,6 +178,22 @@ void PeerEventHandler::OnSignalMessage(const char* message, size_t size,
         }
       }
     }
+  } else if (type == "set_temp_password") {
+    if (!j.contains("request_id") || !j["request_id"].is_string() ||
+        j["request_id"].get<std::string>() != runtime->temp_password_request_id_) {
+      LOG_WARN("Ignore unexpected temporary password response");
+      return;
+    }
+    runtime->temp_password_request_pending_ = false;
+    if (j.value("status", std::string()) == "success" && j.contains("expires_at") &&
+        j["expires_at"].is_number_integer()) {
+      runtime->temp_password_expires_at_ = j["expires_at"].get<int64_t>();
+      LOG_INFO("Temporary password registered, expires_at={}",
+               runtime->temp_password_expires_at_);
+    } else {
+      runtime->temp_password_expires_at_ = 0;
+      LOG_WARN("Temporary password request rejected by server");
+    }
   } else if (type == "change_password") {
     std::lock_guard<std::mutex> lock(runtime->password_change_mutex_);
     if (!runtime->password_change_pending_) {
