@@ -7,13 +7,7 @@ export struct Sponsor {
 }
 
 export global SponsorDirectory {
-    in-out property <[Sponsor]> special: [
-        {
-            name: "HuaLongAI 华龙算力",
-            logo: @image-url("icons/sponsors/hualongai.png"),
-            url: "https://crossdesk.hualong-ai.com/",
-        },
-    ];
+    in-out property <[Sponsor]> special: [];
 }
 
 export component SpecialSponsorStrip inherits Rectangle {

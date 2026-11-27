@@ -3301,7 +3301,9 @@ void GuiApplication::RequestAccountDevices(const std::string& email,
   if (!ui_) return;
   ui_->main->set_account_status(UiText("正在登录…"));
   std::thread([this, email, password]() {
-    const auto result = crossdesk::account::FetchDevices(email, password);
+    const auto result = crossdesk::account::FetchDevices(
+        email, password, std::string(client_id_),
+        std::string(client_id_));  // 本机 ID 同时作为备注名，登录即自动绑定
     std::vector<slint::SharedString> devices;
     std::string status;
     if (!result.ok) {

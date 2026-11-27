@@ -24,6 +24,7 @@
 
 #include "interactive_desktop.h"
 #include "named_pipe_deadline.h"
+#include "client_executable.h"
 #include "path_manager.h"
 #include "platform/path_backend.h"
 #include "rd_log.h"
@@ -514,7 +515,7 @@ bool IsTrustedVirtualDisplayClient(HANDLE pipe) {
   if (own_length == 0 || own_length >= MAX_PATH) return false;
   std::error_code ignored;
   const std::filesystem::path client(image);
-  if (_wcsicmp(client.filename().c_str(), L"CrossDesk.exe") != 0) return false;
+  if (_wcsicmp(client.filename().c_str(), CROSSDESK_CLIENT_EXE) != 0) return false;
   const std::filesystem::path client_directory =
       std::filesystem::weakly_canonical(client.parent_path(), ignored);
   const std::filesystem::path own_directory = std::filesystem::weakly_canonical(

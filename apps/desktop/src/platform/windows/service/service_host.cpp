@@ -21,6 +21,7 @@
 #include "interactive_desktop.h"
 #include "desktop_transition_policy.h"
 #include "named_pipe_deadline.h"
+#include "client_executable.h"
 #include "path_manager.h"
 #include "rd_log.h"
 #include "session_helper_shared.h"
@@ -38,7 +39,7 @@ using Json = nlohmann::json;
 
 constexpr char kSecureDesktopKeyboardIpcCommandPrefix[] = "secure-input-key:";
 constexpr char kSecureDesktopMouseIpcCommandPrefix[] = "secure-input-mouse:";
-constexpr wchar_t kCrossDeskClientProcessName[] = L"crossdesk.exe";
+constexpr wchar_t kCrossDeskClientProcessName[] = CROSSDESK_CLIENT_EXE;
 constexpr DWORD kCrossDeskClientMonitorIntervalMs = 1000;
 constexpr ULONGLONG kCrossDeskClientMonitorStartupGraceMs = 5000;
 constexpr ULONGLONG kSasSecureDesktopGraceMs = 15000;
@@ -1216,7 +1217,7 @@ bool CrossDeskServiceHost::LaunchUnattendedHost(DWORD session_id) {
   }
   const auto executable =
       std::filesystem::path(GetCurrentExecutablePathW()).parent_path() /
-      L"CrossDesk.exe";
+      CROSSDESK_CLIENT_EXE;
   GUID nonce{};
   wchar_t guid[40]{};
   if (FAILED(CoCreateGuid(&nonce)) || !StringFromGUID2(nonce, guid, 40))

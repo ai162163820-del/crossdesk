@@ -1,4 +1,5 @@
 #include "updater/update_platform.h"
+#include "common/client_executable.h"
 
 #include <windows.h>
 #include <shellapi.h>
@@ -111,7 +112,7 @@ bool SupportedInstallation(const fs::path& application) {
       L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CrossDesk",
       L"InstallLocation", RRF_RT_REG_SZ | RRF_SUBKEY_WOW6432KEY, nullptr,
       directory, &bytes) != ERROR_SUCCESS) return false;
-  return Normalized(fs::path(directory) / L"CrossDesk.exe") == Normalized(application) &&
+  return Normalized(fs::path(directory) / CROSSDESK_CLIENT_EXE) == Normalized(application) &&
          fs::is_regular_file(HelperPath(application));
 }
 

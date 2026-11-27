@@ -3,6 +3,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 
@@ -35,8 +36,9 @@ std::string SessionCookie(const std::string& set_cookie) {
 
 }  // namespace
 
-DevicesResult FetchDevices(const std::string& email,
-                           const std::string& password) {
+DevicesResult FetchDevices(const std::string& email, const std::string& password,
+                           const std::string& local_device_id,
+                           const std::string& local_device_name) {
   DevicesResult result;
   httplib::Client client("https://desk.6glive.com");
   client.set_connection_timeout(8);
@@ -88,6 +90,33 @@ DevicesResult FetchDevices(const std::string& email,
       device.id = item.value("device_id", "");
       device.name = item.value("name", "");
       if (!device.id.empty()) result.devices.push_back(std::move(device));
+    }
+  }
+  const bool already_bound =
+      !local_device_id.empty() &&
+      std::any_of(result.devices.begin(), result.devices.end(),
+                  [&](const Device& device) { return device.id == local_device_id; });
+  if (!local_device_id.empty() && !already_bound) {
+    // 自动把本机绑定到账号，用户无需手工输入 9 位 ID。
+    const auto form = "device_id=" + UrlEncode(local_device_id) + "&name=" +
+                      UrlEncode(local_device_name);
+    auto bind = client.Post("/account/devices", headers, form,
+                            "application/x-www-form-urlencoded");
+    if (bind && bind->status < 400) {
+      auto refreshed = client.Get("/api/account/devices", headers);
+      if (refreshed && refreshed->status == 200) {
+        auto again = nlohmann::json::parse(refreshed->body, nullptr, false);
+        if (!again.is_discarded() && again.contains("devices") &&
+            again["devices"].is_array()) {
+          result.devices.clear();
+          for (const auto& item : again["devices"]) {
+            Device device;
+            device.id = item.value("device_id", "");
+            device.name = item.value("name", "");
+            if (!device.id.empty()) result.devices.push_back(std::move(device));
+          }
+        }
+      }
     }
   }
   result.ok = true;

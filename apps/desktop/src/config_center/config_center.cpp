@@ -845,7 +845,12 @@ int ConfigCenter::GetDefaultSignalServerPort() const {
   return server_port_default_;
 }
 
-bool ConfigCenter::IsSelfHosted() const { return enable_self_hosted_; }
+bool ConfigCenter::IsSelfHosted() const {
+  // 只有地址非空才算真正的自托管；否则回落到内置服务器，避免空地址导致
+  // 客户端完全不发起信令连接。
+  return enable_self_hosted_ && !signal_server_host_.empty() &&
+         signal_server_port_ > 0;
+}
 
 bool ConfigCenter::IsEnableAutostart() const {
 #ifdef _WIN32

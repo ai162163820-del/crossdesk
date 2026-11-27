@@ -28,7 +28,10 @@ struct DevicesResult {
 
 // 阻塞调用：POST /login 取会话 Cookie，再 GET /api/account/devices。
 // 调用方应放在工作线程，不要阻塞 UI 线程。
-DevicesResult FetchDevices(const std::string& email, const std::string& password);
+// 登录成功后，如果本机不在账号设备列表里，会自动把它绑定到账号。
+DevicesResult FetchDevices(const std::string& email, const std::string& password,
+                           const std::string& local_device_id = "",
+                           const std::string& local_device_name = "");
 
 }  // namespace crossdesk::account
 
