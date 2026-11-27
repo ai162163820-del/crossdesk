@@ -159,6 +159,9 @@ std::optional<VersionInfo> CheckUpdate() {
             info->update_envelope = updater::SignedDownload(manifest.dump(), platform);
 #endif
 #endif
+          // 用我们自己的清单文案作为更新内容，避免回落到内置的上游更新日志。
+          if (manifest.contains("releaseNotes") && manifest["releaseNotes"].is_string())
+            info->release_notes = manifest["releaseNotes"].get<std::string>();
           LOG_INFO("Fetched version.json: latest_version={}, releaseDate={}, patch={}",
                    info->version, info->release_date, info->patch);
         } else {

@@ -3312,6 +3312,11 @@ void GuiApplication::RequestAccountDevices(const std::string& email,
         if (!device.name.empty()) line += "  " + device.name;
         devices.push_back(slint::SharedString(line));
       }
+      const auto plan = result.plan;
+      const auto plan_label = plan == "pro" ? "专业版"
+                            : plan == "team" ? "团队版"
+                            : plan == "free" ? "免费版" : "未登录";
+      ui_->main->set_account_plan_label(UiText(plan_label));
       status = devices.empty() ? "该账号还没有绑定设备" : "点击设备即可填入 ID";
     }
     slint::invoke_from_event_loop([this, status, devices]() {
