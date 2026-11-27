@@ -19,3 +19,6 @@ node_modules/
 
 # 本地 NSIS 安装包产物
 apps/desktop/scripts/windows/*.exe
+
+# 本地构建日志
+*.log

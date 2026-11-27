@@ -4069,6 +4069,19 @@ export component MainWindow inherits Window {
     callback account-login(string, string);
     callback account-device-selected(string);
 
+    if !root.account-open: Rectangle {
+        x: parent.width - 88px; y: parent.height - 88px;
+        width: 64px; height: 64px; border-radius: 32px;
+        background: #2457d6; z: 60;
+        Text {
+            text: "账号"; color: white; font-size: 14px; font-weight: 600;
+            horizontal-alignment: center; vertical-alignment: center;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.account-open = true; }
+        }
+    }
     if root.account-open: Rectangle {
         x: 0; y: 0; width: parent.width; height: parent.height;
         background: #00000066; z: 200;
