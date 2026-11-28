@@ -24,6 +24,7 @@
 #include <nlohmann/json.hpp>
 #include <thread>
 #include "account_devices.h"
+#include "account_session.h"
 #include <optional>
 #include <random>
 #include <set>
@@ -1253,6 +1254,8 @@ int GuiApplication::Run(bool login_launch) {
   if (!activation_error.empty()) LOG_WARN("{}", activation_error);
 #endif
   cache_path_ = path_manager_->GetCachePath().string();
+  // 门户会话（7 天）保存在用户缓存目录，重启后用来直接刷新会员信息。
+  account_session_path_ = cache_path_ + "/account_session.bin";
   announcements_.SetStorageDirectory(path_manager_->GetCachePath() /
                                      "announcement_reads");
   config_center_ = std::make_unique<ConfigCenter>(cache_path_ + "/config.ini");
@@ -1715,6 +1718,11 @@ void GuiApplication::ResetSettingsUi(bool gallery_window) {
   main->set_self_hosted_enabled(enable_self_hosted_);
 #ifdef _WIN32
   // The machine setting can also be changed by the CLI or another admin.
+  // 定制版默认开机自启（用户仍可在设置里关闭）。
+  if (!config_center_->IsEnableAutostart()) {
+    if (config_center_->SetAutostart(true) == 0) LOG_INFO("Enabled autostart by default");
+    else LOG_WARN("Could not enable autostart by default");
+  }
   enable_autostart_ = config_center_->IsEnableAutostart();
 #endif
   main->set_autostart_enabled(enable_autostart_);
@@ -1732,7 +1740,8 @@ void GuiApplication::ResetSettingsUi(bool gallery_window) {
   main->set_privacy_black_screen_available(true);
   main->set_privacy_black_screen(config_center_->IsPrivacyBlackScreen());
 #endif
-  main->set_lock_on_disconnect_enabled(config_center_->IsLockOnDisconnect());
+  main->set_lock_on_disconnect_mode(
+      static_cast<int>(config_center_->GetDisconnectLockMode()));
   main->set_trusted_devices_only(config_center_->IsTrustedDevicesOnly());
 #if defined(_WIN32) || defined(__APPLE__) || (defined(__linux__) && !defined(__OHOS__))
   main->set_privacy_setting_available(true);
@@ -1914,10 +1923,27 @@ void GuiApplication::BindMainCallbacks(bool gallery_window) {
     RequestAccountDevices(std::string(email), std::string(password));
   });
   main->on_account_device_selected([this](slint::SharedString value) {
-    const std::string text(value);
-    const auto space = text.find(' ');
-    ui_->main->set_remote_id_input(
-        UiText(space == std::string::npos ? text : text.substr(0, space)));
+    ui_->main->set_remote_id_input(UiText(std::string(value)));
+  });
+  main->on_account_refresh([this] {
+    // 面板刚打开：已登录就不打扰，未登录则尝试用保存的会话恢复。
+    if (!account_signed_in_) RefreshAccountSession();
+  });
+  main->on_account_sign_out([this] {
+    // 退出登录必须删掉本地会话，否则下次启动又会自动登录。
+    crossdesk::account::ClearSession(account_session_path_);
+    account_signed_in_ = false;
+    account_busy_ = false;
+    account_plan_code_.clear();
+    account_email_.clear();
+    account_initial_.clear();
+    account_expiry_date_.clear();
+    account_error_key_.clear();
+    ui_->main->set_account_devices(
+        std::make_shared<slint::VectorModel<ui::AccountDevice>>());
+    ui_->main->set_account_busy(false);
+    ui_->main->set_account_password_input(UiText(""));
+    SyncAccountPanel();
   });
   main->on_copy_local_id([this] {
     if (!SDL_SetClipboardText(client_id_)) {
@@ -2651,6 +2677,11 @@ void GuiApplication::Tick() {
     return;
   }
   PollDiagnosticExport();
+  if (!account_session_restored_ && ui_) {
+    // 启动时静默恢复一次保存的门户会话，胶囊立刻显示会员等级。
+    account_session_restored_ = true;
+    RefreshAccountSession();
+  }
 #ifdef _WIN32
   TickLocalHost();
 #endif
@@ -2774,9 +2805,28 @@ void GuiApplication::Tick() {
     if (need_temp_password) RequestTempPassword();
   }
   HandleCredentialRecovery();
+  TickPendingLock();
   if (!peer_) {
     signal_connection_indicator_.Reset();
     CreateConnectionPeer();
+  } else if (signal_connected_.load()) {
+    signal_login_attempts_ = 0;
+    signal_login_deadline_ = {};
+  } else if (signal_login_deadline_ != std::chrono::steady_clock::time_point{} &&
+             std::chrono::steady_clock::now() > signal_login_deadline_) {
+    if (signal_login_attempts_ < 3) {
+      ++signal_login_attempts_;
+      if (!using_fallback_endpoint_) {
+        using_fallback_endpoint_ = true;
+        LOG_WARN("Signal login timed out on 9099, switching to the 443 fallback");
+      }
+      LOG_WARN("Signal login timed out, retry {}/3", signal_login_attempts_);
+      signal_login_deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+      CloseConnectionPeer("login-timeout");
+    } else {
+      LOG_ERROR("Signal login failed after 3 attempts");
+      signal_login_deadline_ = {};
+    }
   }
 #if defined(__linux__) && !defined(__OHOS__)
   HeadlessConsole::Instance().Poll(
@@ -3296,37 +3346,149 @@ void GuiApplication::HandleTempPasswordState() {
   ui_->main->set_temp_password_info(UiText(info));
 }
 
+namespace {
+// 头像用账号邮箱的首个 UTF-8 字符，邮箱为空时返回空串（界面显示占位图标）。
+std::string AccountInitial(const std::string& email) {
+  if (email.empty()) return {};
+  const auto lead = static_cast<unsigned char>(email[0]);
+  size_t length = 1;
+  if (lead >= 0xF0) length = 4;
+  else if (lead >= 0xE0) length = 3;
+  else if (lead >= 0xC0) length = 2;
+  std::string initial = email.substr(0, std::min(length, email.size()));
+  if (initial.size() == 1 && initial[0] >= 'a' && initial[0] <= 'z')
+    initial[0] = static_cast<char>(initial[0] - 'a' + 'A');
+  return initial;
+}
+
+// 到期时间按本地日期显示；0 表示没有有效期（不显示这一行）。
+std::string AccountExpiryDate(long long expires_at) {
+  if (expires_at <= 0) return {};
+  const auto raw = static_cast<std::time_t>(expires_at);
+  std::tm local{};
+#if defined(_WIN32)
+  if (localtime_s(&local, &raw) != 0) return {};
+#else
+  if (!localtime_r(&raw, &local)) return {};
+#endif
+  char buffer[16];
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d", &local);
+  return buffer;
+}
+
+const char* AccountErrorName(crossdesk::account::DevicesResult::Error error) {
+  using Error = crossdesk::account::DevicesResult::Error;
+  switch (error) {
+    case Error::none: return nullptr;
+    case Error::network: return "account_error_network";
+    case Error::credentials: return "account_error_credentials";
+    case Error::session: return "account_error_session";
+    case Error::devices: return "account_error_devices";
+    case Error::parse: return "account_error_parse";
+    case Error::expired: return "account_error_expired";
+  }
+  return nullptr;
+}
+}  // namespace
+
+void GuiApplication::SyncAccountPanel() {
+  if (!ui_) return;
+  const int language = localization::detail::ClampLanguageIndex(localization_language_index_);
+  const std::string& plan = account_signed_in_
+      ? (account_plan_code_ == "pro" ? localization::account_plan_pro[language]
+       : account_plan_code_ == "team" ? localization::account_plan_team[language]
+       : localization::account_plan_free[language])
+      : localization::account_plan_none[language];
+  ui_->main->set_account_plan_label(UiText(plan));
+  ui_->main->set_account_signed_in(account_signed_in_);
+  ui_->main->set_account_email_label(UiText(account_email_));
+  ui_->main->set_account_initial(UiText(account_initial_));
+  ui_->main->set_account_expiry_date(UiText(account_expiry_date_));
+  ui_->main->set_account_status(account_error_key_.empty()
+      ? UiText("")
+      : UiText(localization::Literal(account_error_key_, language)));
+}
+
+void GuiApplication::ApplyAccountResult(
+    const crossdesk::account::DevicesResult& result,
+    const std::string& fallback_email) {
+  if (!ui_) return;
+  const std::string local_id(client_id_);
+  std::vector<ui::AccountDevice> devices;
+  if (result.ok) {
+    for (const auto& device : result.devices) {
+      devices.push_back({UiText(device.id),
+          UiText(device.name.empty() ? device.id : device.name),
+          !local_id.empty() && device.id == local_id});
+    }
+  }
+  std::string email_label = result.email.empty() ? fallback_email : result.email;
+  const std::string initial = AccountInitial(email_label);
+  const std::string expiry = AccountExpiryDate(result.expires_at);
+  const char* error_name = AccountErrorName(result.error_code);
+  // 会话过期是“静默退出登录”，不把 401 当成错误甩给用户。
+  const bool expired =
+      result.error_code == crossdesk::account::DevicesResult::Error::expired;
+  std::string error_key = (error_name && !expired) ? error_name : "";
+  const std::string plan_code = result.ok ? result.plan : std::string{};
+  slint::invoke_from_event_loop([this, result_ok = result.ok,
+                                    devices = std::move(devices),
+                                    email = std::move(email_label),
+                                    initial = std::move(initial),
+                                    expiry = std::move(expiry),
+                                    error_key = std::move(error_key),
+                                    plan_code]() {
+    if (!ui_) return;
+    account_signed_in_ = result_ok;
+    account_plan_code_ = plan_code;
+    account_email_ = email;
+    account_initial_ = initial;
+    account_expiry_date_ = expiry;
+    account_error_key_ = error_key;
+    auto model = std::make_shared<slint::VectorModel<ui::AccountDevice>>();
+    for (const auto& device : devices) model->push_back(device);
+    ui_->main->set_account_devices(model);
+    account_busy_ = false;
+    ui_->main->set_account_busy(false);
+    // 登录成功后清空密码框，避免面板重新打开时留着明文。
+    ui_->main->set_account_password_input(UiText(""));
+    SyncAccountPanel();
+  });
+}
+
 void GuiApplication::RequestAccountDevices(const std::string& email,
                                            const std::string& password) {
-  if (!ui_) return;
-  ui_->main->set_account_status(UiText("正在登录…"));
-  std::thread([this, email, password]() {
-    const auto result = crossdesk::account::FetchDevices(
-        email, password, std::string(client_id_),
-        std::string(client_id_));  // 本机 ID 同时作为备注名，登录即自动绑定
-    std::vector<slint::SharedString> devices;
-    std::string status;
-    if (!result.ok) {
-      status = result.error;
-    } else {
-      for (const auto& device : result.devices) {
-        std::string line = device.id;
-        if (!device.name.empty()) line += "  " + device.name;
-        devices.push_back(slint::SharedString(line));
-      }
-      const auto plan = result.plan;
-      const auto plan_label = plan == "pro" ? "专业版"
-                            : plan == "team" ? "团队版"
-                            : plan == "free" ? "免费版" : "未登录";
-      ui_->main->set_account_plan_label(UiText(plan_label));
-      status = devices.empty() ? "该账号还没有绑定设备" : "点击设备即可填入 ID";
-    }
-    slint::invoke_from_event_loop([this, status, devices]() {
-      if (!ui_) return;
-      ui_->main->set_account_devices(
-          std::make_shared<slint::VectorModel<slint::SharedString>>(devices));
-      ui_->main->set_account_status(UiText(status));
-    });
+  if (!ui_ || account_busy_) return;
+  account_busy_ = true;
+  ui_->main->set_account_busy(true);
+  ui_->main->set_account_status(UiText(""));
+  const std::string local_id(client_id_);
+  const std::string session_path(account_session_path_);
+  // 本机 ID 同时作为备注名，登录即自动绑定
+  std::thread([this, email, password, local_id, session_path]() {
+    const auto result =
+        crossdesk::account::FetchDevices(email, password, local_id, local_id);
+    // 会话 token 存在工作线程里落盘（DPAPI + 私有文件），不占用 UI 线程。
+    if (result.ok && !result.session_token.empty())
+      crossdesk::account::SaveSession(session_path, result.session_token);
+    ApplyAccountResult(result, email);
+  }).detach();
+}
+
+void GuiApplication::RefreshAccountSession() {
+  if (!ui_ || account_busy_) return;
+  const auto stored = crossdesk::account::LoadSession(account_session_path_);
+  if (!stored.ok) return;
+  account_busy_ = true;
+  ui_->main->set_account_busy(true);
+  const std::string local_id(client_id_);
+  const std::string session_path(account_session_path_);
+  std::thread([this, token = stored.token, local_id, session_path]() {
+    const auto result = crossdesk::account::FetchDevicesWithSession(
+        token, local_id, local_id);
+    if (result.error_code == crossdesk::account::DevicesResult::Error::expired)
+      crossdesk::account::ClearSession(session_path);
+    ApplyAccountResult(result, {});
   }).detach();
 }
 
@@ -3383,7 +3545,7 @@ void GuiApplication::HandlePasswordChangeResult() {
     }
     show_offline_warning_window_ = true;
     if (uncertain && peer_) {
-      CloseConnectionPeer();
+      CloseConnectionPeer("password-change");
     }
     return;
   }
@@ -3399,7 +3561,7 @@ void GuiApplication::HandlePasswordChangeResult() {
   HeadlessConsole::Instance().NotifyKey("console_password_confirmed");
 #endif
   if (peer_) {
-    CloseConnectionPeer();
+    CloseConnectionPeer("password-change");
   }
 }
 
@@ -3454,7 +3616,7 @@ void GuiApplication::HandleCredentialRecovery() {
   if (action == CredentialRecoveryAction::RetryActive) {
     LOG_INFO("Pending credential was not accepted; retrying active credential");
     if (peer_) {
-      CloseConnectionPeer();
+      CloseConnectionPeer("password-change");
     }
     return;
   }
@@ -3513,6 +3675,7 @@ void GuiApplication::UpdateLocalization() {
     ui_localization::ApplyStreamWindowStrings(view.window, language);
   for (auto& [_, browser] : ui_->file_browsers)
     browser->UpdateActionLabels(language);
+  SyncAccountPanel();
   ui_->localized_language = language;
 }
 
@@ -5170,7 +5333,9 @@ bool GuiApplication::PersistSettingsFromUi(bool gallery_window) {
     return false;
   }
 #if defined(_WIN32) || defined(__APPLE__) || (defined(__linux__) && !defined(__OHOS__))
-  if (config_center_->SetLockOnDisconnect(main->get_lock_on_disconnect_enabled()) != 0) {
+  if (config_center_->SetDisconnectLockMode(
+          static_cast<ConfigCenter::DISCONNECT_LOCK_MODE>(
+              main->get_lock_on_disconnect_mode())) != 0) {
     if (wall_changed && !previous_wall.Save(shared_wall_path))
       LOG_ERROR("Failed to restore DeskHub settings after lock preference save failure");
     main->set_settings_save_error(UiText(

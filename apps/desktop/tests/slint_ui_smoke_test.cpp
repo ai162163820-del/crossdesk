@@ -237,6 +237,32 @@ void ConfigureMainCapturePage(
     window->set_announcement_unread(4);
     window->set_update_available(true);
     window->set_update_open(false);
+  } else if (options.page == "account" || options.page == "account-signed-in" ||
+             options.page == "account-many") {
+    window->set_account_open(true);
+    window->set_account_plan_label(crossdesk::ui_localization::Text(
+        (options.page == "account" ? crossdesk::localization::account_plan_none
+                                   : crossdesk::localization::account_plan_pro)[language]));
+    if (options.page == "account-signed-in" || options.page == "account-many") {
+      window->set_account_signed_in(true);
+      window->set_account_email_label("zhang.wei@example.com");
+      window->set_account_initial("Z");
+      window->set_account_expiry_date("2026-12-31");
+      std::vector<crossdesk::ui::AccountDevice> devices{
+          {"123456789", "Office workstation", true},
+          {"987654321", "Meeting room PC", false},
+          {"246813579", "Home desktop", false},
+      };
+      if (options.page == "account-many") {
+        for (int i = 0; i < 5; ++i) {
+          devices.push_back({slint::SharedString("13579246" + std::to_string(i)),
+              slint::SharedString("Branch office " + std::to_string(i + 1)), false});
+        }
+      }
+      window->set_account_devices(
+          std::make_shared<slint::VectorModel<crossdesk::ui::AccountDevice>>(
+              std::move(devices)));
+    }
   } else if (options.page == "settings-deskhub" ||
              options.page == "settings-deskhub-error") {
     window->set_settings_open(true);

@@ -751,7 +751,7 @@ void SessionDeviceManager::RefreshIdleDisplays() {
   registered_display_stream_count_ = display_count;
   owner_.selected_display_ = 0;
   admission.unlock();
-  if (recreate_peer) owner_.CloseConnectionPeer();
+  if (recreate_peer) owner_.CloseConnectionPeer("display-refresh");
 }
 
 void SessionDeviceManager::UpdateInteractions() {

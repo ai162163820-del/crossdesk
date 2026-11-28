@@ -149,7 +149,7 @@ bool GuiRuntime::PrepareSharedGuiIdentity(bool import_existing) {
   if (!SupportsServiceAutostart() || shared_identity_) return true;
   if (!import_existing && settings_.Save() != 0) return false;
   if (peer_) {
-    CloseConnectionPeer();
+    CloseConnectionPeer("runtime-reset");
     WaitForSessionCleanup();
   }
   std::string error;
@@ -236,6 +236,9 @@ int GuiRuntime::CreateConnectionPeer() {
           "server");
     }
 
+    if (force_empty_identity_) {
+      use_cached_id = false;
+    }
     if (use_cached_id && strlen(self_hosted_id_) > 0) {
       memset(&self_hosted_user_id_, 0, sizeof(self_hosted_user_id_));
       strncpy(self_hosted_user_id_, self_hosted_id_,
@@ -249,9 +252,24 @@ int GuiRuntime::CreateConnectionPeer() {
           "Using empty id for self-hosted server, server will assign new id");
     }
   } else {
-    signal_server_ip = config_center_->GetDefaultServerHost();
-    signal_server_port = config_center_->GetDefaultSignalServerPort();
-    settings_.ActivateCachedPublicIdentity();
+    // 内置服务器：端点在 9099，登录失败后回退到 443/signal。
+    if (using_fallback_endpoint_) { signal_server_ip = "desk.6glive.com/signal"; signal_server_port = 443; }
+    else { signal_server_ip = "desk.6glive.com"; signal_server_port = 9099; }
+    // 内置服务器用的是“公共身份”缓存（client_id_with_password），必须走
+    // ActivateCachedPublicIdentity() 才能同时激活 client_id_。这里曾误用
+    // LoadCachedSelfHostedIdentity()：它读 self_hosted_id（内置服务器从不写该
+    // 字段），失败时还会清空 client_id_，于是登录成功后
+    // PeerEventHandler::OnSignalStatus 认不出自己的 ID，宿主/界面永远停在
+    // “未连接服务器”，10 秒后被登录看门狗断开重建（见交接文档的根因记录）。
+    if (force_empty_identity_) {
+      memset(client_id_with_password_, 0, sizeof(client_id_with_password_));
+      memset(client_id_, 0, sizeof(client_id_));
+      memset(password_saved_, 0, sizeof(password_saved_));
+      LOG_WARN("Dropping the cached built-in server identity to re-register");
+    }
+    if (!settings_.ActivateCachedPublicIdentity()) {
+      LOG_INFO("No cached identity for the built-in server, requesting a new id");
+    }
     params_.user_id = client_id_with_password_;
   }
 
@@ -362,8 +380,12 @@ int GuiRuntime::CreateConnectionPeer() {
   }
   if (peer_) {
     LOG_INFO("Create peer instance successful");
+    // 所有创建入口统一启动登录看门狗。
+    signal_login_deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     LOG_DEBUG("Local client id: [{}]", client_id_);
 #ifdef _WIN32
+    // 定制版：界面自己拥有信令连接，不再依赖后台宿主进程，
+    // 避免宿主未就绪时界面永久停在“未连接服务器”。
     if (managed_host_frontend_) {
       if (!local_host_) local_host_ = std::make_shared<LocalHostChannel>(false);
       std::weak_ptr<LocalHostChannel> channel = local_host_;
@@ -396,6 +418,7 @@ int GuiRuntime::CreateConnectionPeer() {
     const auto announcement_cache = path_manager_->GetCachePath() / "announcement_catalog";
     const auto utf8 = announcement_cache.u8string();
     MiniRtcSetAnnouncementCacheDirectory(peer_, std::string(utf8.begin(), utf8.end()).c_str());
+    LOG_INFO("Signal init: endpoint={}:{} user_id_len={} user_id={}", signal_server_ip, signal_server_port, params_.user_id ? strlen(params_.user_id) : 0, params_.user_id ? params_.user_id : "(null)");
     const int ret = MiniRtcInit(peer_);
     if (ret == 0) LOG_INFO("Peer initialization finished");
     return ret;

@@ -571,6 +571,30 @@ inline constexpr TranslationRow kTranslationRows[] = {
   {"对端地址", {"对端地址", "Remote endpoint", "Удалённый адрес", "對端位址", "リモートアドレス", "원격 주소", "Remote-Adresse", "Adresse distante", "Dirección remota", "Endereço remoto"}},
   {"删除分组", {"删除分组", "Delete group", "Удалить группу", "刪除分組", "グループを削除", "그룹 삭제", "Gruppe löschen", "Supprimer le groupe", "Eliminar grupo", "Excluir grupo"}},
   {"组内设备和连接记录将保留。", {"组内设备和连接记录将保留。", "Devices and connection history will be kept.", "Устройства и история подключений сохранятся.", "組內裝置和連線記錄將保留。", "グループ内のデバイスと接続履歴は保持されます。", "그룹의 기기와 연결 기록은 유지됩니다.", "Geräte und Verbindungsverlauf bleiben erhalten.", "Les appareils et l’historique des connexions seront conservés.", "Se conservarán los dispositivos y el historial de conexiones.", "Os dispositivos e o histórico de conexões serão mantidos."}},
+  {"30 秒后锁屏", {"30 秒后锁屏", "After 30 seconds", "Через 30 секунд", "30 秒後鎖屏", "30 秒後", "30초 후", "Nach 30 Sekunden", "Après 30 secondes", "Tras 30 segundos", "Após 30 segundos"}},
+  {"立即锁屏", {"立即锁屏", "Immediately", "Сразу", "立即鎖屏", "すぐに", "즉시", "Sofort", "Immédiatement", "Inmediatamente", "Imediatamente"}},
+  {"从不锁屏", {"从不锁屏", "Never", "Никогда", "從不鎖屏", "しない", "안 함", "Nie", "Jamais", "Nunca", "Nunca"}},
+  {"账号与会员", {"账号与会员", "Account and membership", "Аккаунт и подписка", "帳號與會員", "アカウントとメンバーシップ", "계정 및 멤버십", "Konto und Mitgliedschaft", "Compte et abonnement", "Cuenta y suscripción", "Conta e assinatura"}},
+  {"我的设备", {"我的设备", "My devices", "Мои устройства", "我的裝置", "マイデバイス", "내 기기", "Meine Geräte", "Mes appareils", "Mis dispositivos", "Meus dispositivos"}},
+  {"邮箱", {"邮箱", "Email", "Эл. почта", "電子郵件", "メールアドレス", "이메일", "E-Mail", "E-mail", "Correo electrónico", "E-mail"}},
+  {"登录", {"登录", "Sign in", "Войти", "登入", "サインイン", "로그인", "Anmelden", "Se connecter", "Iniciar sesión", "Entrar"}},
+  {"正在登录…", {"正在登录…", "Signing in…", "Вход…", "正在登入…", "サインイン中…", "로그인 중…", "Anmeldung läuft…", "Connexion…", "Iniciando sesión…", "Entrando…"}},
+  {"登录后查看会员信息与同账号设备", {"登录后查看会员信息与同账号设备", "Sign in to see your membership and devices", "Войдите, чтобы увидеть подписку и устройства", "登入後查看會員資訊與同帳號裝置", "サインインするとメンバーシップとデバイスが表示されます", "로그인하면 멤버십과 기기를 볼 수 있습니다", "Anmelden, um Mitgliedschaft und Geräte zu sehen", "Connectez-vous pour voir votre abonnement et vos appareils", "Inicia sesión para ver tu suscripción y dispositivos", "Entre para ver sua assinatura e dispositivos"}},
+  {"该账号还没有绑定设备", {"该账号还没有绑定设备", "No devices are bound to this account yet", "К аккаунту пока не привязано ни одного устройства", "該帳號還沒有綁定裝置", "このアカウントにはまだデバイスがありません", "이 계정에 아직 등록된 기기가 없습니다", "Mit diesem Konto sind noch keine Geräte verknüpft", "Aucun appareil n'est encore associé à ce compte", "Esta cuenta aún no tiene dispositivos vinculados", "Nenhum dispositivo vinculado a esta conta ainda"}},
+  {"点击设备填入它的 ID", {"点击设备填入它的 ID", "Select a device to fill in its ID", "Выберите устройство, чтобы подставить его ID", "點選裝置填入它的 ID", "デバイスを選ぶと ID が入力されます", "기기를 선택하면 ID가 입력됩니다", "Gerät auswählen, um seine ID einzutragen", "Sélectionnez un appareil pour insérer son ID", "Selecciona un dispositivo para rellenar su ID", "Selecione um dispositivo para preencher o ID"}},
+  {"本机", {"本机", "This device", "Это устройство", "本機", "このデバイス", "이 기기", "Dieses Gerät", "Cet appareil", "Este dispositivo", "Este dispositivo"}},
+  {"有效期至", {"有效期至", "Valid until", "Действует до", "有效期限", "有効期限", "유효 기간", "Gültig bis", "Valable jusqu'au", "Válido hasta", "Válido até"}},
+  {"免费版", {"免费版", "Free", "Бесплатный", "免費版", "無料", "무료", "Kostenlos", "Gratuit", "Gratis", "Grátis"}},
+  {"专业版", {"专业版", "Pro", "Профессиональный", "專業版", "プロ", "프로", "Pro", "Pro", "Pro", "Pro"}},
+  {"团队版", {"团队版", "Team", "Командный", "團隊版", "チーム", "팀", "Team", "Équipe", "Equipo", "Equipe"}},
+  {"未登录", {"未登录", "Not signed in", "Не выполнен вход", "未登入", "未サインイン", "로그인 안 됨", "Nicht angemeldet", "Non connecté", "Sin sesión", "Não conectado"}},
+  {"无法连接账号服务器", {"无法连接账号服务器", "Cannot reach the account server", "Не удаётся подключиться к серверу аккаунта", "無法連線帳號伺服器", "アカウントサーバーに接続できません", "계정 서버에 연결할 수 없습니다", "Kontoserver nicht erreichbar", "Serveur de compte inaccessible", "No se puede conectar al servidor de cuentas", "Não é possível acessar o servidor de contas"}},
+  {"邮箱或密码不正确", {"邮箱或密码不正确", "Email or password is incorrect", "Неверная почта или пароль", "電子郵件或密碼不正確", "メールアドレスまたはパスワードが正しくありません", "이메일 또는 비밀번호가 올바르지 않습니다", "E-Mail oder Passwort ist falsch", "E-mail ou mot de passe incorrect", "Correo o contraseña incorrectos", "E-mail ou senha incorretos"}},
+  {"登录响应缺少会话", {"登录响应缺少会话", "The sign-in response has no session", "В ответе на вход нет сессии", "登入回應缺少工作階段", "サインイン応答にセッションがありません", "로그인 응답에 세션이 없습니다", "Die Anmeldeantwort enthält keine Sitzung", "La réponse de connexion ne contient pas de session", "La respuesta de inicio de sesión no tiene sesión", "A resposta de login não tem sessão"}},
+  {"无法获取设备列表", {"无法获取设备列表", "Cannot load the device list", "Не удаётся получить список устройств", "無法取得裝置清單", "デバイス一覧を取得できません", "기기 목록을 가져올 수 없습니다", "Geräteliste kann nicht geladen werden", "Impossible de charger la liste des appareils", "No se puede cargar la lista de dispositivos", "Não é possível carregar a lista de dispositivos"}},
+  {"设备列表解析失败", {"设备列表解析失败", "The device list could not be parsed", "Не удалось разобрать список устройств", "裝置清單解析失敗", "デバイス一覧を解析できません", "기기 목록을 해석할 수 없습니다", "Geräteliste konnte nicht gelesen werden", "La liste des appareils n'a pas pu être lue", "No se pudo interpretar la lista de dispositivos", "Não foi possível interpretar a lista de dispositivos"}},
+  {"登录已失效，请重试", {"登录已失效，请重试", "The session expired. Please sign in again.", "Сессия истекла. Войдите снова.", "登入已失效，請重試", "セッションが切れました。再度サインインしてください。", "세션이 만료되었습니다. 다시 로그인하세요.", "Sitzung abgelaufen. Bitte erneut anmelden.", "Session expirée. Veuillez vous reconnecter.", "La sesión expiró. Vuelve a iniciar sesión.", "Sessão expirada. Entre novamente."}},
+  {"退出登录", {"退出登录", "Sign out", "Выйти", "登出", "サインアウト", "로그아웃", "Abmelden", "Se déconnecter", "Cerrar sesión", "Sair"}},
 };
 
 struct NamedTranslation { const char* name; const char* literal; };
@@ -873,6 +897,31 @@ inline constexpr NamedTranslation kNamedTranslations[] = {
   {"windows_service_repair_success", "服务已修复并启动"},
   {"windows_service_repair_failed", "修复失败，请检查管理员权限和便携版文件后重试"},
   {"remote_service_unavailable_message", "远端 Windows 服务不可用，锁屏时无法操作。请在远端安装或修复 CrossDesk 服务。"},
+  {"lock_delay_after_30s", "30 秒后锁屏"},
+  {"lock_delay_immediate", "立即锁屏"},
+  {"lock_delay_never", "从不锁屏"},
+  {"account_title", "账号与会员"},
+  {"account_my_devices", "我的设备"},
+  {"account_email", "邮箱"},
+  {"account_sign_in", "登录"},
+  {"account_signing_in", "正在登录…"},
+  {"account_sign_in_hint", "登录后查看会员信息与同账号设备"},
+  {"account_no_devices", "该账号还没有绑定设备"},
+  {"account_device_hint", "点击设备填入它的 ID"},
+  {"account_local_device", "本机"},
+  {"account_valid_until", "有效期至"},
+  {"account_plan_free", "免费版"},
+  {"account_plan_pro", "专业版"},
+  {"account_plan_team", "团队版"},
+  {"account_plan_none", "未登录"},
+  {"account_error_network", "无法连接账号服务器"},
+  {"account_error_credentials", "邮箱或密码不正确"},
+  {"account_error_session", "登录响应缺少会话"},
+  {"account_error_devices", "无法获取设备列表"},
+  {"account_error_parse", "设备列表解析失败"},
+  {"account_error_expired", "登录已失效，请重试"},
+  {"account_close", "关闭"},
+  {"account_sign_out", "退出登录"},
 };
 inline constexpr const char* kSlintLiterals[] = {
   "此端口已被占用，",
@@ -1396,7 +1445,32 @@ inline constexpr const char* kSlintLiterals[] = {
   X(windows_service_repairing) \
   X(windows_service_repair_success) \
   X(windows_service_repair_failed) \
-  X(remote_service_unavailable_message)
+  X(remote_service_unavailable_message) \
+  X(lock_delay_after_30s) \
+  X(lock_delay_immediate) \
+  X(lock_delay_never) \
+  X(account_title) \
+  X(account_my_devices) \
+  X(account_email) \
+  X(account_sign_in) \
+  X(account_signing_in) \
+  X(account_sign_in_hint) \
+  X(account_no_devices) \
+  X(account_device_hint) \
+  X(account_local_device) \
+  X(account_valid_until) \
+  X(account_plan_free) \
+  X(account_plan_pro) \
+  X(account_plan_team) \
+  X(account_plan_none) \
+  X(account_error_network) \
+  X(account_error_credentials) \
+  X(account_error_session) \
+  X(account_error_devices) \
+  X(account_error_parse) \
+  X(account_error_expired) \
+  X(account_close) \
+  X(account_sign_out)
 
 }  // namespace localization
 }  // namespace crossdesk

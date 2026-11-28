@@ -489,9 +489,12 @@ bool SettingsManager::LoadCachedSelfHostedIdentity() {
   std::lock_guard<std::mutex> lock(cache_mutex_);
   if ((!ReadV3Locked() && !ReadV2Locked()) ||
       cache_v2_.self_hosted_id[0] == '\0') {
+    // Only the self-hosted identity is cleared here. client_id_ and
+    // password_saved_ belong to the built-in server's public identity and are
+    // maintained by Load()/ActivateCachedPublicIdentity(); clearing them made
+    // a valid cached identity unreachable after login (OnSignalStatus compares
+    // the signaled id against client_id_).
     std::memset(owner_.self_hosted_id_, 0, sizeof(owner_.self_hosted_id_));
-    std::memset(owner_.client_id_, 0, sizeof(owner_.client_id_));
-    std::memset(owner_.password_saved_, 0, sizeof(owner_.password_saved_));
     return false;
   }
 

@@ -205,6 +205,16 @@ struct ConnectionState {
   TaskQueueLockFree session_cleanup_queue_;
   std::unordered_map<std::string, std::future<void>> session_cleanup_tasks_;
   std::future<void> connection_peer_cleanup_;
+  // 信令登录看门狗：Init 成功但迟迟收不到 Connected 时重试。
+  int signal_login_attempts_ = 0;
+  // 9099 登录失败后才回退到 443（wss://host/signal）。
+  bool using_fallback_endpoint_ = false;
+  // 最后一个控制端断开后的延迟锁屏截止时间（未设置表示无需锁屏）。
+  std::chrono::steady_clock::time_point pending_lock_deadline_{};
+  bool pending_lock_armed_ = false;
+  // 连续登录失败后强制以空身份重新注册（身份在服务端已失效时自救）。
+  bool force_empty_identity_ = false;
+  std::chrono::steady_clock::time_point signal_login_deadline_{};
   std::unordered_map<std::string, std::future<void>> controller_cleanup_tasks_;
   struct PendingReconnect {
     std::string password;

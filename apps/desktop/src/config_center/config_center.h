@@ -29,6 +29,9 @@ class ConfigCenter {
     BRAZILIAN_PORTUGUESE = 9, SYSTEM = 10
   };
   enum class CONNECTION_MODE { DEVICE_ID = 0, DIRECT_IP = 1 };
+  // 最后一个控制端断开后的锁屏策略；顺序即设置界面的选项顺序。
+  enum class DISCONNECT_LOCK_MODE { AFTER_30S = 0, IMMEDIATE = 1, NEVER = 2 };
+  static constexpr int kDisconnectLockDelaySeconds = 30;
   using VIDEO_ENCODE_FORMAT = MiniRtcVideoCodec;
   enum class TURN_MODE {
     DISABLED = 0,
@@ -71,6 +74,8 @@ class ConfigCenter {
   int SetPrivacyLocalUnlock(bool allowed);
   int SetPrivacyBlackScreen(bool enabled);
   int SetLockOnDisconnect(bool enabled);
+  // 三选一：断开后从不锁屏 / 立即锁屏 / 30 秒后锁屏（宽限期内重连则取消）。
+  int SetDisconnectLockMode(DISCONNECT_LOCK_MODE mode);
   int SetTrustedDevicesOnly(bool enabled);
   int SetSaveRemotePreviews(bool enabled);
   int SetPauseVideoWhenMinimized(bool enabled);
@@ -103,6 +108,9 @@ class ConfigCenter {
   int GetDefaultSignalServerPort() const;
   bool IsSelfHosted() const;
   bool IsEnableAutostart() const;
+  // 最后一个控制端断开后延迟多久锁屏：0=立即，负数=从不。
+  int GetLockOnDisconnectDelay() const;
+  DISCONNECT_LOCK_MODE GetDisconnectLockMode() const;
   bool IsEnableDaemon() const;
   bool IsEnablePrivacyScreen() const;
   bool IsPrivacyLocalUnlockAllowed() const;
@@ -145,11 +153,11 @@ class ConfigCenter {
   int relay_start_bitrate_bps_ = kDefaultRelayStartBitrateBps;
   static constexpr bool kDefaultDisableReceiverPaddingProbing = true;
   bool disable_receiver_padding_probing_ = kDefaultDisableReceiverPaddingProbing;
-  std::string signal_server_host_ = "";
+  std::string signal_server_host_ = "desk.6glive.com";
   std::string signal_server_host_default_ = "desk.6glive.com/signal";
-  int signal_server_port_ = 0;
+  int signal_server_port_ = 9099;
   int server_port_default_ = 443;
-  bool enable_self_hosted_ = false;
+  bool enable_self_hosted_ = true;
   bool enable_autostart_ = false;
   bool enable_daemon_ = false;
   std::atomic<bool> enable_privacy_screen_{true};

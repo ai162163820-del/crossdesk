@@ -160,6 +160,30 @@ inline int ApplyMainWindowStrings(
   strings.set_privacy_black_screen(Text(localization::privacy_black_screen[language]));
   strings.set_privacy_on_connect(Text(localization::privacy_on_connect[language]));
   strings.set_lock_on_disconnect(Text(localization::lock_on_disconnect[language]));
+  strings.set_lock_delay_after_30s(
+      Text(localization::lock_delay_after_30s[language]));
+  strings.set_lock_delay_immediate(
+      Text(localization::lock_delay_immediate[language]));
+  strings.set_lock_delay_never(Text(localization::lock_delay_never[language]));
+  strings.set_account_title(Text(localization::account_title[language]));
+  strings.set_account_my_devices(
+      Text(localization::account_my_devices[language]));
+  strings.set_account_email(Text(localization::account_email[language]));
+  strings.set_account_sign_in(Text(localization::account_sign_in[language]));
+  strings.set_account_signing_in(
+      Text(localization::account_signing_in[language]));
+  strings.set_account_sign_in_hint(
+      Text(localization::account_sign_in_hint[language]));
+  strings.set_account_no_devices(
+      Text(localization::account_no_devices[language]));
+  strings.set_account_device_hint(
+      Text(localization::account_device_hint[language]));
+  strings.set_account_local_device(
+      Text(localization::account_local_device[language]));
+  strings.set_account_valid_until(
+      Text(localization::account_valid_until[language]));
+  strings.set_account_close(Text(localization::account_close[language]));
+  strings.set_account_sign_out(Text(localization::account_sign_out[language]));
   strings.set_file_save_path(
       Text(localization::file_transfer_save_path[language]));
   strings.set_default_desktop(Text(localization::default_desktop[language]));

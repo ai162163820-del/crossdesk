@@ -10,6 +10,9 @@
 namespace crossdesk::account {
 namespace {
 
+constexpr const char* kPortalBase = "https://desk.6glive.com";
+constexpr const char* kSessionCookie = "portal_session=";
+
 std::string UrlEncode(const std::string& value) {
   static const char* kHex = "0123456789ABCDEF";
   std::string out;
@@ -26,12 +29,87 @@ std::string UrlEncode(const std::string& value) {
   return out;
 }
 
-std::string SessionCookie(const std::string& set_cookie) {
-  const auto pos = set_cookie.find("portal_session=");
+// 从 Set-Cookie 里取出 portal_session 的值（不带 Cookie 名）。
+std::string SessionToken(const std::string& set_cookie) {
+  const std::string name(kSessionCookie);
+  const auto pos = set_cookie.find(name);
   if (pos == std::string::npos) return {};
-  const auto end = set_cookie.find(';', pos);
+  const auto start = pos + name.size();
+  const auto end = set_cookie.find(';', start);
   return set_cookie.substr(
-      pos, end == std::string::npos ? std::string::npos : end - pos);
+      start, end == std::string::npos ? std::string::npos : end - start);
+}
+
+httplib::Headers CookieHeaders(const std::string& token) {
+  return httplib::Headers{{"Cookie", kSessionCookie + token}};
+}
+
+void Configure(httplib::Client& client) {
+  client.set_connection_timeout(8);
+  client.set_read_timeout(12);
+  client.set_follow_location(false);
+}
+
+void ReadDeviceList(const nlohmann::json& parsed, DevicesResult* result) {
+  result->email = parsed.value("email", "");
+  result->plan = parsed.value("plan", "free");
+  result->expires_at = parsed.value("expires_at", 0LL);
+  result->devices.clear();
+  if (parsed.contains("devices") && parsed["devices"].is_array()) {
+    for (const auto& item : parsed["devices"]) {
+      Device device;
+      device.id = item.value("device_id", "");
+      device.name = item.value("name", "");
+      if (!device.id.empty()) result->devices.push_back(std::move(device));
+    }
+  }
+}
+
+// 本机不在账号设备列表里时自动绑定，然后重新拉取一次。
+void BindLocalDevice(httplib::Client& client, const httplib::Headers& headers,
+                     const std::string& local_id, const std::string& local_name,
+                     DevicesResult* result) {
+  if (local_id.empty()) return;
+  const bool bound =
+      std::any_of(result->devices.begin(), result->devices.end(),
+                  [&](const Device& device) { return device.id == local_id; });
+  if (bound) return;
+  const auto form = "device_id=" + UrlEncode(local_id) + "&name=" +
+                    UrlEncode(local_name);
+  auto bind = client.Post("/account/devices", headers, form,
+                          "application/x-www-form-urlencoded");
+  if (!bind || bind->status >= 400) return;
+  auto refreshed = client.Get("/api/account/devices", headers);
+  if (!refreshed || refreshed->status != 200) return;
+  auto again = nlohmann::json::parse(refreshed->body, nullptr, false);
+  if (!again.is_discarded()) ReadDeviceList(again, result);
+}
+
+// 一次 GET /api/account/devices 及错误归类，登录和会话复用共用。
+void LoadDevices(httplib::Client& client, const httplib::Headers& headers,
+                 const std::string& local_id, const std::string& local_name,
+                 DevicesResult* result) {
+  auto list = client.Get("/api/account/devices", headers);
+  if (!list) {
+    result->error_code = DevicesResult::Error::network;
+    return;
+  }
+  if (list->status == 401) {
+    result->error_code = DevicesResult::Error::expired;
+    return;
+  }
+  if (list->status != 200) {
+    result->error_code = DevicesResult::Error::devices;
+    return;
+  }
+  auto parsed = nlohmann::json::parse(list->body, nullptr, false);
+  if (parsed.is_discarded()) {
+    result->error_code = DevicesResult::Error::parse;
+    return;
+  }
+  ReadDeviceList(parsed, result);
+  BindLocalDevice(client, headers, local_id, local_name, result);
+  result->ok = true;
 }
 
 }  // namespace
@@ -40,86 +118,45 @@ DevicesResult FetchDevices(const std::string& email, const std::string& password
                            const std::string& local_device_id,
                            const std::string& local_device_name) {
   DevicesResult result;
-  httplib::Client client("https://desk.6glive.com");
-  client.set_connection_timeout(8);
-  client.set_read_timeout(12);
-  client.set_follow_location(false);
+  httplib::Client client(kPortalBase);
+  Configure(client);
 
   const auto body = "email=" + UrlEncode(email) + "&password=" +
                     UrlEncode(password);
   auto login = client.Post("/login", body, "application/x-www-form-urlencoded");
   if (!login) {
-    result.error = "无法连接账号服务器";
+    result.error_code = DevicesResult::Error::network;
     return result;
   }
   if (login->status != 200 && login->status != 302 && login->status != 303) {
-    result.error = "邮箱或密码不正确";
+    result.error_code = DevicesResult::Error::credentials;
     return result;
   }
-  const auto cookie = SessionCookie(login->get_header_value("Set-Cookie"));
-  if (cookie.empty()) {
-    result.error = "登录响应缺少会话";
+  const auto token = SessionToken(login->get_header_value("Set-Cookie"));
+  if (token.empty()) {
+    result.error_code = DevicesResult::Error::session;
     return result;
   }
+  // 交给界面保存，下次启动可以直接刷新会员信息。
+  result.session_token = token;
+  LoadDevices(client, CookieHeaders(token), local_device_id, local_device_name,
+              &result);
+  return result;
+}
 
-  httplib::Headers headers{{"Cookie", cookie}};
-  auto list = client.Get("/api/account/devices", headers);
-  if (!list) {
-    result.error = "无法获取设备列表";
+DevicesResult FetchDevicesWithSession(const std::string& session_token,
+                                      const std::string& local_device_id,
+                                      const std::string& local_device_name) {
+  DevicesResult result;
+  if (session_token.empty()) {
+    result.error_code = DevicesResult::Error::expired;
     return result;
   }
-  if (list->status == 401) {
-    result.error = "登录已失效，请重试";
-    return result;
-  }
-  if (list->status != 200) {
-    result.error = "获取设备列表失败";
-    return result;
-  }
-  auto parsed = nlohmann::json::parse(list->body, nullptr, false);
-  if (parsed.is_discarded()) {
-    result.error = "设备列表解析失败";
-    return result;
-  }
-  result.email = parsed.value("email", "");
-  result.plan = parsed.value("plan", "free");
-  result.expires_at = parsed.value("expires_at", 0LL);
-  if (parsed.contains("devices") && parsed["devices"].is_array()) {
-    for (const auto& item : parsed["devices"]) {
-      Device device;
-      device.id = item.value("device_id", "");
-      device.name = item.value("name", "");
-      if (!device.id.empty()) result.devices.push_back(std::move(device));
-    }
-  }
-  const bool already_bound =
-      !local_device_id.empty() &&
-      std::any_of(result.devices.begin(), result.devices.end(),
-                  [&](const Device& device) { return device.id == local_device_id; });
-  if (!local_device_id.empty() && !already_bound) {
-    // 自动把本机绑定到账号，用户无需手工输入 9 位 ID。
-    const auto form = "device_id=" + UrlEncode(local_device_id) + "&name=" +
-                      UrlEncode(local_device_name);
-    auto bind = client.Post("/account/devices", headers, form,
-                            "application/x-www-form-urlencoded");
-    if (bind && bind->status < 400) {
-      auto refreshed = client.Get("/api/account/devices", headers);
-      if (refreshed && refreshed->status == 200) {
-        auto again = nlohmann::json::parse(refreshed->body, nullptr, false);
-        if (!again.is_discarded() && again.contains("devices") &&
-            again["devices"].is_array()) {
-          result.devices.clear();
-          for (const auto& item : again["devices"]) {
-            Device device;
-            device.id = item.value("device_id", "");
-            device.name = item.value("name", "");
-            if (!device.id.empty()) result.devices.push_back(std::move(device));
-          }
-        }
-      }
-    }
-  }
-  result.ok = true;
+  httplib::Client client(kPortalBase);
+  Configure(client);
+  LoadDevices(client, CookieHeaders(session_token), local_device_id,
+              local_device_name, &result);
+  if (result.ok) result.session_token = session_token;
   return result;
 }
 

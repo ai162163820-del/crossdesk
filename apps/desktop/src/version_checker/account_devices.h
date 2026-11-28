@@ -18,10 +18,23 @@ struct Device {
 };
 
 struct DevicesResult {
+  // 界面按错误码本地化，不再直接显示这里的中文串。
+  enum class Error {
+    none = 0,
+    network,
+    credentials,
+    session,
+    devices,
+    parse,
+    expired,
+  };
   bool ok = false;
+  Error error_code = Error::none;
   std::string error;
   std::string email;
   std::string plan;
+  // 门户会话 token：登录成功时会下发，界面负责持久化（见 account_session.h）。
+  std::string session_token;
   long long expires_at = 0;
   std::vector<Device> devices;
 };
@@ -32,6 +45,11 @@ struct DevicesResult {
 DevicesResult FetchDevices(const std::string& email, const std::string& password,
                            const std::string& local_device_id = "",
                            const std::string& local_device_name = "");
+
+// 用已保存的会话 token 刷新会员信息与设备列表；会话失效返回 Error::expired。
+DevicesResult FetchDevicesWithSession(const std::string& session_token,
+                                      const std::string& local_device_id = "",
+                                      const std::string& local_device_name = "");
 
 }  // namespace crossdesk::account
 

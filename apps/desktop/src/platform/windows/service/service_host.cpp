@@ -1218,6 +1218,7 @@ bool CrossDeskServiceHost::LaunchUnattendedHost(DWORD session_id) {
   const auto executable =
       std::filesystem::path(GetCurrentExecutablePathW()).parent_path() /
       CROSSDESK_CLIENT_EXE;
+  LOG_INFO("Unattended host target: {} (exists={})", CROSSDESK_CLIENT_EXE_NARROW, std::filesystem::exists(executable));
   GUID nonce{};
   wchar_t guid[40]{};
   if (FAILED(CoCreateGuid(&nonce)) || !StringFromGUID2(nonce, guid, 40))

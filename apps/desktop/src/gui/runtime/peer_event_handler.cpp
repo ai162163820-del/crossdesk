@@ -48,6 +48,21 @@ constexpr HostPlatform kClientPlatform = HostPlatform::Linux;
 constexpr HostPlatform kClientPlatform = HostPlatform::Unknown;
 #endif
 
+// Keeps signaling state transitions readable in the log; connection problems
+// used to be invisible because only the connected state was ever reported.
+const char* SignalStatusName(MiniRtcSignalStatus status) {
+  switch (status) {
+    case MiniRtcSignalStatus::MiniRtcSignalConnecting: return "connecting";
+    case MiniRtcSignalStatus::MiniRtcSignalConnected: return "connected";
+    case MiniRtcSignalStatus::MiniRtcSignalFailed: return "failed";
+    case MiniRtcSignalStatus::MiniRtcSignalClosed: return "closed";
+    case MiniRtcSignalStatus::MiniRtcSignalReconnecting: return "reconnecting";
+    case MiniRtcSignalStatus::MiniRtcSignalServerClosed: return "server_closed";
+    case MiniRtcSignalStatus::MiniRtcSignalTlsCertError: return "tls_cert_error";
+  }
+  return "unknown";
+}
+
 }  // namespace
 
 std::string PeerEventHandler::ConnectionKey(const char* id, size_t size) const {
@@ -119,6 +134,7 @@ void PeerEventHandler::OnSignalMessage(const char* message, size_t size,
     return;
   }
   std::string type = j["type"].get<std::string>();
+  LOG_INFO("Signal message received type={}", type);
 #ifdef _WIN32
   if (runtime->unattended_host_ && runtime->local_host_ &&
       (type == "presence" || type == "presence_update" ||
@@ -241,7 +257,21 @@ void PeerEventHandler::OnSignalStatus(MiniRtcSignalStatus status, const char* us
   GuiRuntime* runtime = &handler->owner_;
 
   std::string client_id(user_id, user_id_size);
-  if (client_id == runtime->client_id_) {
+  // The local peer reports the server-assigned ID without the login password
+  // suffix on every login after the registration reply. When no cached ID was
+  // activated, adopt it instead of silently dropping the login result, which
+  // otherwise leaves the client "not connected" while the server accepted it.
+  const bool alias = client_id.rfind("C-", 0) == 0;
+  const bool local_peer = !client_id.empty() && !alias &&
+      (client_id == runtime->client_id_ || runtime->client_id_[0] == '\0');
+  if (local_peer) {
+    if (runtime->client_id_[0] == '\0') {
+      LOG_WARN("No cached device id; adopting the signaled id [{}]", client_id);
+      memset(runtime->client_id_, 0, sizeof(runtime->client_id_));
+      strncpy(runtime->client_id_, client_id.c_str(), sizeof(runtime->client_id_) - 1);
+      runtime->client_id_[sizeof(runtime->client_id_) - 1] = '\0';
+    }
+    LOG_INFO("Signal status {} for device [{}]", SignalStatusName(status), client_id);
     runtime->announcements_.SetConnected(status == MiniRtcSignalStatus::MiniRtcSignalConnected);
     runtime->signal_status_ = status;
     runtime->device_presence_cache_.SetSignalConnected(
@@ -280,7 +310,13 @@ void PeerEventHandler::OnSignalStatus(MiniRtcSignalStatus status, const char* us
       runtime->signal_connected_ = false;
     }
   } else {
-    if (client_id.rfind("C-", 0) != 0) {
+    if (!alias) {
+      // With the adoption above, a mismatch here means the signaled id is not
+      // this device; an empty id is the pre-registration window and carries no
+      // information worth a warning.
+      if (runtime->client_id_[0] != '\0')
+        LOG_WARN("Ignore signal status for [{}]; the active device id is [{}]",
+                 client_id, runtime->client_id_);
       return;
     }
 

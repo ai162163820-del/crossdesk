@@ -24,6 +24,10 @@
 
 namespace crossdesk {
 
+namespace account {
+struct DevicesResult;
+}
+
 class UpdateChecker;
 namespace updater { class Controller; }
 
@@ -76,6 +80,13 @@ private:
   void RequestTempPassword();
   // 账号设备列表：登录门户并拉取同账号设备。
   void RequestAccountDevices(const std::string& email, const std::string& password);
+  // 用本地保存的门户会话刷新会员信息与设备（启动时与面板打开时调用）。
+  void RefreshAccountSession();
+  // 把一次门户查询的结果落到界面状态；由工作线程调用，内部切回 UI 线程。
+  void ApplyAccountResult(const crossdesk::account::DevicesResult& result,
+                          const std::string& fallback_email);
+  // 会员区（胶囊 + 头像 + 面板）按当前语言与已保存的账号状态重绘。
+  void SyncAccountPanel();
   void HandleTempPasswordState();
   void HandleCredentialRecovery();
   void SyncMainWindow();
@@ -169,6 +180,18 @@ private:
   std::chrono::steady_clock::time_point last_video_frame_gap_log_time_{};
   std::atomic<bool> video_present_queued_{false};
   SignalConnectionIndicator signal_connection_indicator_;
+  // 会员区状态：plan_code 为空表示未登录；error_key 是待本地化的错误文案键。
+  bool account_signed_in_ = false;
+  // 一次请求在途时不再发起第二次（启动刷新与手动登录互斥）。
+  bool account_busy_ = false;
+  // 启动后只尝试恢复一次保存的门户会话。
+  bool account_session_restored_ = false;
+  std::string account_session_path_;
+  std::string account_plan_code_;
+  std::string account_email_;
+  std::string account_initial_;
+  std::string account_expiry_date_;
+  std::string account_error_key_;
 #if (defined(__linux__) && !defined(__OHOS__)) && !defined(__APPLE__)
   bool use_xwayland_gui_ = false;
   bool use_x11_custom_titlebar_ = false;

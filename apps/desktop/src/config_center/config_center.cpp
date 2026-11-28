@@ -387,6 +387,9 @@ std::string ConfigCenter::ExportSharedHostConfig() const {
   host.SetLongValue(section_, "video_encode_format", static_cast<long>(video_encode_format_));
   host.SetBoolValue(section_, "trusted_devices_only", trusted_devices_only_.load());
   host.SetBoolValue(section_, "lock_on_disconnect", lock_on_disconnect_.load());
+  // The unattended host performs the disconnect lock, so the grace period has
+  // to travel with the rest of the shared host configuration.
+  host.SetLongValue(section_, "lock_on_disconnect_delay", GetLockOnDisconnectDelay());
   host.SetBoolValue(section_, "enable_privacy_screen", false);
   host.SetBoolValue(section_, "save_remote_previews", false);
   host.SetBoolValue(section_, "enable_ip_direct", false);
@@ -416,6 +419,11 @@ int ConfigCenter::ApplySharedHostConfig(const std::string& contents) {
       kDefaultDisableReceiverPaddingProbing);
   const bool trusted = host.GetBoolValue(section_, "trusted_devices_only", false);
   const bool lock = host.GetBoolValue(section_, "lock_on_disconnect", true);
+  // Snapshots written before the three-way setting omit the grace period.
+  const long lock_delay = host.GetLongValue(section_, "lock_on_disconnect_delay",
+      ini_->GetLongValue(section_, "lock_on_disconnect_delay",
+                         kDisconnectLockDelaySeconds));
+  if (lock_delay < -1 || lock_delay > 3600) return -1;
   MiniRtcSignalServerAddress address{};
   if (!IsValidTurnModeValue(turn) || codec < 0 || codec > static_cast<long>(VIDEO_ENCODE_FORMAT::H265) ||
       (self_hosted && (port < 1 || port > 65535 ||
@@ -429,7 +437,8 @@ int ConfigCenter::ApplySharedHostConfig(const std::string& contents) {
                    {"disable_receiver_padding_probing",
                     disable_receiver_padding_probing ? "true" : "false"},
                    {"trusted_devices_only", trusted ? "true" : "false"},
-                   {"lock_on_disconnect", lock ? "true" : "false"}}) != 0) return -1;
+                   {"lock_on_disconnect", lock ? "true" : "false"},
+                   {"lock_on_disconnect_delay", std::to_string(lock_delay)}}) != 0) return -1;
   enable_self_hosted_ = self_hosted;
   signal_server_host_ = server;
   signal_server_port_ = static_cast<int>(port);
@@ -702,6 +711,31 @@ bool ConfigCenter::IsLockOnDisconnect() const {
   return lock_on_disconnect_.load();
 }
 
+int ConfigCenter::SetDisconnectLockMode(DISCONNECT_LOCK_MODE mode) {
+  if (mode != DISCONNECT_LOCK_MODE::AFTER_30S &&
+      mode != DISCONNECT_LOCK_MODE::IMMEDIATE &&
+      mode != DISCONNECT_LOCK_MODE::NEVER) return -1;
+  const bool enabled = mode != DISCONNECT_LOCK_MODE::NEVER;
+  const int delay = mode == DISCONNECT_LOCK_MODE::IMMEDIATE
+      ? 0 : kDisconnectLockDelaySeconds;
+  // Both keys describe one choice; store them together so the host never sees
+  // "enabled" with a stale delay or the reverse.
+  if (StoreValues({{"lock_on_disconnect", enabled ? "true" : "false"},
+                   {"lock_on_disconnect_delay", std::to_string(delay)}}) != 0)
+    return -1;
+  lock_on_disconnect_.store(enabled);
+  return 0;
+}
+
+ConfigCenter::DISCONNECT_LOCK_MODE ConfigCenter::GetDisconnectLockMode() const {
+  // A negative delay was the earlier "never" spelling; keep reading it.
+  if (!lock_on_disconnect_.load()) return DISCONNECT_LOCK_MODE::NEVER;
+  const int delay = GetLockOnDisconnectDelay();
+  if (delay < 0) return DISCONNECT_LOCK_MODE::NEVER;
+  return delay == 0 ? DISCONNECT_LOCK_MODE::IMMEDIATE
+                    : DISCONNECT_LOCK_MODE::AFTER_30S;
+}
+
 int ConfigCenter::SetSaveRemotePreviews(bool enabled) {
   if (StoreValues({{"save_remote_previews", enabled ? "true" : "false"}}) != 0) {
     return -1;
@@ -850,6 +884,11 @@ bool ConfigCenter::IsSelfHosted() const {
   // 客户端完全不发起信令连接。
   return enable_self_hosted_ && !signal_server_host_.empty() &&
          signal_server_port_ > 0;
+}
+
+int ConfigCenter::GetLockOnDisconnectDelay() const {
+  return static_cast<int>(ini_->GetLongValue(section_, "lock_on_disconnect_delay",
+                                             kDisconnectLockDelaySeconds));
 }
 
 bool ConfigCenter::IsEnableAutostart() const {

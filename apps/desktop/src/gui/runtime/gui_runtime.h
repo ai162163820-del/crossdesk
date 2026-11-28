@@ -170,7 +170,9 @@ class GuiRuntime : protected gui_detail::GuiState {
 
   void CloseRemoteSession(std::shared_ptr<RemoteSession> props);
   void CloseAllRemoteSessions();
-  void CloseConnectionPeer();
+  void CloseConnectionPeer(const char* reason = "unspecified");
+  // 断开后的延迟锁屏：宽限期内有控制端重连则取消。
+  void TickPendingLock();
   void CloseServerController(const std::string& remote_id);
   void ResetRemoteSessionResources(std::shared_ptr<RemoteSession> props);
   void HandleSessionCleanup();

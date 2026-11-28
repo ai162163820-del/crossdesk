@@ -261,7 +261,16 @@ void GuiRuntime::HandleScreenLock() {
   // path does not reacquire connection_status_mutex_.
   RestoreHostDisplayResolutions(true);
 #if defined(_WIN32) || defined(__APPLE__) || (defined(__linux__) && !defined(__OHOS__))
-  if (LockScreen()) LOG_INFO("Requested screen lock after last controller disconnected");
+  const int delay = config_center_->GetLockOnDisconnectDelay();
+  if (delay < 0) {
+    LOG_INFO("Screen lock after disconnect is disabled");
+  } else if (delay == 0) {
+    if (LockScreen()) LOG_INFO("Requested screen lock after last controller disconnected");
+  } else {
+    pending_lock_deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(delay);
+    pending_lock_armed_ = true;
+    LOG_INFO("Screen lock scheduled in {}s unless a controller reconnects", delay);
+  }
 #endif
 }
 
@@ -426,7 +435,9 @@ void GuiRuntime::CloseServerController(const std::string& remote_id) {
       });
 }
 
-void GuiRuntime::CloseConnectionPeer() {
+void GuiRuntime::CloseConnectionPeer(const char* reason) {
+  // 诊断用：记录是谁要求关闭信令连接，便于定位周期性断开。
+  LOG_INFO("CloseConnectionPeer reason={}", reason ? reason : "nullptr");
   if (!peer_) {
     announcements_.Reset();
     return;
@@ -476,8 +487,23 @@ void GuiRuntime::CloseConnectionPeer() {
       });
 }
 
+void GuiRuntime::TickPendingLock() {
+  if (!pending_lock_armed_) return;
+  {
+    std::shared_lock lock(connection_status_mutex_);
+    if (!connection_status_.empty()) {
+      pending_lock_armed_ = false;
+      LOG_INFO("Pending screen lock cancelled: a controller reconnected");
+      return;
+    }
+  }
+  if (std::chrono::steady_clock::now() < pending_lock_deadline_) return;
+  pending_lock_armed_ = false;
+  if (LockScreen()) LOG_INFO("Screen lock executed after the grace period");
+}
+
 void GuiRuntime::CloseAllRemoteSessions() {
-  CloseConnectionPeer();
+  CloseConnectionPeer("close-all-sessions");
   is_client_mode_ = false;
   pending_reconnects_.clear();
   std::vector<std::shared_ptr<RemoteSession>> sessions;

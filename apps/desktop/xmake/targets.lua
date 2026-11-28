@@ -635,6 +635,12 @@ function setup_targets()
         add_packages("nlohmann_json", {public = true})
         add_packages("cpp-httplib")
         add_deps("rd_log", "crossdesk_wire", "updater_core")
+        -- 账号会话（门户 token）落盘需要用户私有 ACL 与原子写。
+        add_deps("private_file")
+        if is_os("windows") then
+            -- DPAPI：门户会话用当前用户作用域加密后保存。
+            add_syslinks("Crypt32", {public = true})
+        end
         if is_config("CROSSDESK_PORTABLE", true) then
             add_defines("CROSSDESK_PORTABLE=1")
         end
@@ -643,6 +649,18 @@ function setup_targets()
         if is_os("macosx") then
             add_defines("CPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN")
             add_frameworks("Security", "CoreFoundation")
+        end
+
+    target("account_session_test")
+        set_kind("binary")
+        set_default(false)
+        add_packages("openssl3")
+        add_deps("private_file")
+        add_files("apps/desktop/tests/account_session_test.cpp",
+            "apps/desktop/src/version_checker/account_session.cpp")
+        add_includedirs("apps/desktop/src/version_checker")
+        if is_os("windows") then
+            add_syslinks("Crypt32")
         end
 
     target("tools")
