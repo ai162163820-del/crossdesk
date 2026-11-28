@@ -26,8 +26,12 @@ class ConfigCenter {
   enum class LANGUAGE {
     CHINESE = 0, ENGLISH = 1, RUSSIAN = 2, TRADITIONAL_CHINESE = 3,
     JAPANESE = 4, KOREAN = 5, GERMAN = 6, FRENCH = 7, SPANISH = 8,
-    BRAZILIAN_PORTUGUESE = 9, SYSTEM = 10
+    BRAZILIAN_PORTUGUESE = 9, TURKISH = 10, HEBREW = 11, SYSTEM = 12
   };
+  // config.ini and numeric console commands reserve 10 for "follow system".
+  static constexpr int kSystemLanguageSetting = 10;
+  static LANGUAGE LanguageFromSetting(long value);
+  static int LanguageSettingValue(LANGUAGE language);
   enum class CONNECTION_MODE { DEVICE_ID = 0, DIRECT_IP = 1 };
   // 最后一个控制端断开后的锁屏策略；顺序即设置界面的选项顺序。
   enum class DISCONNECT_LOCK_MODE { AFTER_30S = 0, IMMEDIATE = 1, NEVER = 2 };
@@ -73,6 +77,10 @@ class ConfigCenter {
   int SetPrivacyScreen(bool enable_privacy_screen);
   int SetPrivacyLocalUnlock(bool allowed);
   int SetPrivacyBlackScreen(bool enabled);
+#ifdef __APPLE__
+  int SetAutoVirtualDisplay(bool enabled);
+  bool IsAutoVirtualDisplay() const { return auto_virtual_display_.load(); }
+#endif
   int SetLockOnDisconnect(bool enabled);
   // 三选一：断开后从不锁屏 / 立即锁屏 / 30 秒后锁屏（宽限期内重连则取消）。
   int SetDisconnectLockMode(DISCONNECT_LOCK_MODE mode);
@@ -130,7 +138,7 @@ class ConfigCenter {
   int Save();
   // Only connection/admission preferences cross into the SYSTEM host profile.
   std::string ExportSharedHostConfig() const;
-  int ApplySharedHostConfig(const std::string& contents);
+  int ApplySharedHostConfig(const std::string& contents, bool* save_failed = nullptr);
 
  private:
   int CommitIni(bool warn_only = false);
@@ -163,6 +171,9 @@ class ConfigCenter {
   std::atomic<bool> enable_privacy_screen_{true};
   std::atomic<bool> privacy_local_unlock_allowed_{true};
   std::atomic<bool> privacy_black_screen_{false};
+#ifdef __APPLE__
+  std::atomic<bool> auto_virtual_display_{true};
+#endif
   std::atomic<bool> lock_on_disconnect_{true};
   std::atomic<bool> trusted_devices_only_{false};
   std::atomic<bool> save_remote_previews_{true};
